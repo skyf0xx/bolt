@@ -1,5 +1,6 @@
 local Utils = {}
 local Constants = require('arbitrage.constants')
+local json = require('json')
 
 -- String manipulation utilities
 
@@ -53,11 +54,22 @@ end
 function Utils.deepCopy(obj)
   if type(obj) ~= 'table' then return obj end
 
-  local res = {}
-  for k, v in pairs(obj) do
-    res[k] = Utils.deepCopy(v)
+  -- Use JSON for deep copy (more efficient for most cases)
+  -- Fall back to manual copy for tables with non-serializable values
+  local status, result = pcall(function()
+    return json.decode(json.encode(obj))
+  end)
+
+  if status then
+    return result
+  else
+    -- Manual deep copy fallback
+    local res = {}
+    for k, v in pairs(obj) do
+      res[k] = Utils.deepCopy(v)
+    end
+    return res
   end
-  return res
 end
 
 -- Remove duplicates from array
@@ -125,6 +137,48 @@ function Utils.formatNumber(num, decimals)
 
   return formatted
 end
+
+-- JSON utilities
+
+-- Encode a table to JSON string
+function Utils.jsonEncode(data)
+  local status, result = pcall(json.encode, data)
+  if status then
+    return result
+  else
+    return "{\"error\":\"Failed to encode JSON\"}"
+  end
+end
+
+-- Decode a JSON string to table
+function Utils.jsonDecode(jsonStr)
+  if not jsonStr or jsonStr == "" then return {} end
+
+  local status, result = pcall(json.decode, jsonStr)
+  if status then
+    return result
+  else
+    return {}
+  end
+end
+
+-- Pretty print JSON with indentation
+function Utils.jsonPretty(data)
+  if type(data) == "string" then
+    -- If it's already a string, try to parse it first
+    data = Utils.jsonDecode(data)
+  end
+
+  local status, result = pcall(json.encode, data, { pretty = true })
+  if status then
+    return result
+  else
+    return "{\"error\":\"Failed to encode JSON\"}"
+  end
+end
+
+-- Alias for backwards compatibility
+Utils.stringifyJson = Utils.jsonEncode
 
 -- Error handling
 
@@ -253,7 +307,7 @@ function Utils.log(level, message, data)
 
   if data then
     if type(data) == "table" then
-      logStr = logStr .. " " .. Utils.stringifyJson(data)
+      logStr = logStr .. " " .. Utils.jsonEncode(data)
     else
       logStr = logStr .. " " .. tostring(data)
     end
