@@ -6,43 +6,44 @@ local Utils = require('arbitrage.utils')
 local Permaswap = {}
 
 -- Fetch basic information about a Permaswap pool
-function Permaswap.fetchPoolInfo(poolAddress)
+function Permaswap.fetchPoolInfo(poolAddress, callback)
   Logger.debug("Fetching pool info", { pool = poolAddress })
 
-  local response = Send({
+  Send({
     Target = poolAddress,
     Action = Constants.API.PERMASWAP.INFO
-  })
-
-  if not response or response.Error then
-    Logger.error("Failed to fetch pool info", {
-      pool = poolAddress,
-      error = response and response.Error or "No response"
-    })
-    return nil, response and response.Error or "No response from pool"
-  end
-
-  return response
+  }).onReply(function(response)
+    if not response or response.Error then
+      Logger.error("Failed to fetch pool info", {
+        pool = poolAddress,
+        error = response and response.Error or "No response"
+      })
+      callback(nil, response and response.Error or "No response from pool")
+    else
+      callback(response)
+    end
+  end)
 end
 
 -- Fetch reserves for a specific pool
-function Permaswap.fetchReserves(poolAddress)
+function Permaswap.fetchReserves(poolAddress, callback)
   Logger.debug("Fetching reserves", { pool = poolAddress })
 
   -- For Permaswap, reserves are included in the Info response
-  local poolInfo, err = Permaswap.fetchPoolInfo(poolAddress)
+  Permaswap.fetchPoolInfo(poolAddress, function(poolInfo, err)
+    if not poolInfo then
+      callback(nil, err)
+      return
+    end
 
-  if not poolInfo then
-    return nil, err
-  end
+    -- Extract reserve data from pool info
+    local reserves = {
+      reserveX = poolInfo.PX or "0",
+      reserveY = poolInfo.PY or "0"
+    }
 
-  -- Extract reserve data from pool info
-  local reserves = {
-    reserveX = poolInfo.PX or "0",
-    reserveY = poolInfo.PY or "0"
-  }
-
-  return reserves
+    callback(reserves)
+  end)
 end
 
 -- Calculate expected output amount for a swap in Permaswap
@@ -59,38 +60,38 @@ function Permaswap.calculateOutputAmount(amountIn, reserveIn, reserveOut, feeBps
 end
 
 -- Get expected output directly from Permaswap API
-function Permaswap.getAmountOut(poolAddress, tokenIn, amountIn)
+function Permaswap.getAmountOut(poolAddress, tokenIn, amountIn, callback)
   Logger.debug("Getting amount out", {
     pool = poolAddress,
     tokenIn = tokenIn,
     amountIn = amountIn
   })
 
-  local response = Send({
+  Send({
     Target = poolAddress,
     Action = Constants.API.PERMASWAP.GET_AMOUNT_OUT,
     TokenIn = tokenIn,
     AmountIn = tostring(amountIn)
-  })
-
-  if not response or response.Error then
-    Logger.error("Failed to get amount out", {
-      pool = poolAddress,
-      error = response and response.Error or "No response"
-    })
-    return nil, response and response.Error or "No response from pool"
-  end
-
-  return {
-    amountOut = response.AmountOut,
-    tokenIn = response.TokenIn,
-    tokenOut = response.TokenOut,
-    fee = {
-      issuer = response.IssuerFee or "0",
-      holder = response.HolderFee or "0",
-      pool = response.PoolFee or "0"
-    }
-  }
+  }).onReply(function(response)
+    if not response or response.Error then
+      Logger.error("Failed to get amount out", {
+        pool = poolAddress,
+        error = response and response.Error or "No response"
+      })
+      callback(nil, response and response.Error or "No response from pool")
+    else
+      callback({
+        amountOut = response.AmountOut,
+        tokenIn = response.TokenIn,
+        tokenOut = response.TokenOut,
+        fee = {
+          issuer = response.IssuerFee or "0",
+          holder = response.HolderFee or "0",
+          pool = response.PoolFee or "0"
+        }
+      })
+    end
+  end)
 end
 
 -- Normalize pool data from Permaswap format to our standard format
@@ -137,32 +138,34 @@ function Permaswap.normalizePoolData(poolAddress, poolData)
 end
 
 -- Collect data for a single Permaswap pool
-function Permaswap.collectPoolData(poolAddress)
+function Permaswap.collectPoolData(poolAddress, callback)
   Logger.info("Collecting data for pool", { pool = poolAddress })
 
-  local poolInfo, err = Permaswap.fetchPoolInfo(poolAddress)
+  Permaswap.fetchPoolInfo(poolAddress, function(poolInfo, err)
+    if not poolInfo then
+      callback(nil, err)
+      return
+    end
 
-  if not poolInfo then
-    return nil, err
-  end
+    local normalizedData = Permaswap.normalizePoolData(poolAddress, poolInfo)
 
-  local normalizedData = Permaswap.normalizePoolData(poolAddress, poolInfo)
+    if not normalizedData then
+      callback(nil, "Failed to normalize pool data")
+      return
+    end
 
-  if not normalizedData then
-    return nil, "Failed to normalize pool data"
-  end
+    -- Add reserve data
+    normalizedData.reserves = {
+      reserve_a = poolInfo.PX or "0",
+      reserve_b = poolInfo.PY or "0"
+    }
 
-  -- Add reserve data
-  normalizedData.reserves = {
-    reserve_a = poolInfo.PX or "0",
-    reserve_b = poolInfo.PY or "0"
-  }
-
-  return normalizedData
+    callback(normalizedData)
+  end)
 end
 
 -- Collect data from multiple Permaswap pools
-function Permaswap.collectAllPoolsData(poolAddresses)
+function Permaswap.collectAllPoolsData(poolAddresses, finalCallback)
   local results = {
     pools = {},
     tokens = {},
@@ -170,43 +173,54 @@ function Permaswap.collectAllPoolsData(poolAddresses)
     errors = {}
   }
 
+  local pendingPools = #poolAddresses
+  if pendingPools == 0 then
+    finalCallback(results)
+    return
+  end
+
   for _, poolAddress in ipairs(poolAddresses) do
-    local poolData, err = Permaswap.collectPoolData(poolAddress)
+    Permaswap.collectPoolData(poolAddress, function(poolData, err)
+      pendingPools = pendingPools - 1
 
-    if poolData then
-      table.insert(results.pools, poolData.pool)
+      if poolData then
+        table.insert(results.pools, poolData.pool)
 
-      -- Add tokens
-      for _, token in ipairs(poolData.tokens) do
-        results.tokens[token.id] = token
+        -- Add tokens
+        for _, token in ipairs(poolData.tokens) do
+          results.tokens[token.id] = token
+        end
+
+        -- Add reserves
+        results.reserves[poolAddress] = poolData.reserves
+      else
+        results.errors[poolAddress] = err
+        Logger.warn("Failed to collect data for pool", { pool = poolAddress, error = err })
       end
 
-      -- Add reserves
-      results.reserves[poolAddress] = poolData.reserves
-    else
-      results.errors[poolAddress] = err
-      Logger.warn("Failed to collect data for pool", { pool = poolAddress, error = err })
-    end
+      -- Check if all pools have been processed
+      if pendingPools == 0 then
+        -- Convert tokens table to array
+        local tokensArray = {}
+        for _, token in pairs(results.tokens) do
+          table.insert(tokensArray, token)
+        end
+        results.tokens = tokensArray
+
+        Logger.info("Collected Permaswap data", {
+          poolCount = #results.pools,
+          tokenCount = #results.tokens,
+          errorCount = Utils.tableSize(results.errors)
+        })
+
+        finalCallback(results)
+      end
+    end)
   end
-
-  -- Convert tokens table to array
-  local tokensArray = {}
-  for _, token in pairs(results.tokens) do
-    table.insert(tokensArray, token)
-  end
-  results.tokens = tokensArray
-
-  Logger.info("Collected Permaswap data", {
-    poolCount = #results.pools,
-    tokenCount = #results.tokens,
-    errorCount = Utils.tableSize(results.errors)
-  })
-
-  return results
 end
 
 -- Execute a swap via Permaswap
-function Permaswap.executeSwap(poolAddress, tokenIn, tokenOut, amountIn, minAmountOut)
+function Permaswap.executeSwap(poolAddress, tokenIn, tokenOut, amountIn, minAmountOut, callback)
   Logger.info("Executing swap", {
     pool = poolAddress,
     tokenIn = tokenIn,
@@ -228,70 +242,72 @@ function Permaswap.executeSwap(poolAddress, tokenIn, tokenOut, amountIn, minAmou
     request.AmountOut = tostring(minAmountOut)
   end
 
-  local response = Send(request)
-
-  if not response or response.Error then
-    Logger.error("Failed to execute swap", {
-      pool = poolAddress,
-      error = response and response.Error or "No response"
-    })
-    return nil, response and response.Error or "No response from pool"
-  end
-
-  -- Parse the response data
-  local orderData
-  if response.Data then
-    local status, data = pcall(function() return Utils.jsonDecode(response.Data) end)
-    if status then
-      orderData = data
-    else
-      Logger.warn("Failed to parse order data", { error = data })
+  Send(request).onReply(function(response)
+    if not response or response.Error then
+      Logger.error("Failed to execute swap", {
+        pool = poolAddress,
+        error = response and response.Error or "No response"
+      })
+      callback(nil, response and response.Error or "No response from pool")
+      return
     end
-  end
 
-  return {
-    noteId = response.NoteID,
-    noteSettle = response.NoteSettle,
-    noteSettleVersion = response.NoteSettleVersion,
-    orderData = orderData
-  }
+    -- Parse the response data
+    local orderData
+    if response.Data then
+      local status, data = pcall(function() return Utils.jsonDecode(response.Data) end)
+      if status then
+        orderData = data
+      else
+        Logger.warn("Failed to parse order data", { error = data })
+      end
+    end
+
+    callback({
+      noteId = response.NoteID,
+      noteSettle = response.NoteSettle,
+      noteSettleVersion = response.NoteSettleVersion,
+      orderData = orderData
+    })
+  end)
 end
 
 -- Get order status
-function Permaswap.getOrderStatus(poolAddress, orderId)
+function Permaswap.getOrderStatus(poolAddress, orderId, callback)
   Logger.debug("Getting order status", { pool = poolAddress, orderId = orderId })
 
-  local response = Send({
+  Send({
     Target = poolAddress,
     Action = Constants.API.PERMASWAP.GET_ORDER,
     OrderId = orderId
-  })
-
-  if not response or response.Error then
-    Logger.error("Failed to get order status", {
-      pool = poolAddress,
-      orderId = orderId,
-      error = response and response.Error or "No response"
-    })
-    return nil, response and response.Error or "No response from pool"
-  end
-
-  -- Parse the order data
-  local orderData
-  if response.Data then
-    local status, data = pcall(function() return Utils.jsonDecode(response.Data) end)
-    if status then
-      orderData = data
-    else
-      Logger.warn("Failed to parse order data", { error = data })
+  }).onReply(function(response)
+    if not response or response.Error then
+      Logger.error("Failed to get order status", {
+        pool = poolAddress,
+        orderId = orderId,
+        error = response and response.Error or "No response"
+      })
+      callback(nil, response and response.Error or "No response from pool")
+      return
     end
-  end
 
-  return orderData
+    -- Parse the order data
+    local orderData
+    if response.Data then
+      local status, data = pcall(function() return Utils.jsonDecode(response.Data) end)
+      if status then
+        orderData = data
+      else
+        Logger.warn("Failed to parse order data", { error = data })
+      end
+    end
+
+    callback(orderData)
+  end)
 end
 
 -- Get user balance in pool
-function Permaswap.getBalance(poolAddress, userAddress)
+function Permaswap.getBalance(poolAddress, userAddress, callback)
   Logger.debug("Getting balance", { pool = poolAddress, user = userAddress })
 
   local request = {
@@ -303,31 +319,32 @@ function Permaswap.getBalance(poolAddress, userAddress)
     request.Account = userAddress
   end
 
-  local response = Send(request)
+  Send(request).onReply(function(response)
+    if not response or response.Error then
+      Logger.error("Failed to get balance", {
+        pool = poolAddress,
+        error = response and response.Error or "No response"
+      })
+      callback(nil, response and response.Error or "No response from pool")
+      return
+    end
 
-  if not response or response.Error then
-    Logger.error("Failed to get balance", {
-      pool = poolAddress,
-      error = response and response.Error or "No response"
+    callback({
+      balanceX = response.BalanceX,
+      balanceY = response.BalanceY,
+      lpBalance = response.Balance,
+      totalSupply = response.TotalSupply,
+      account = response.Account
     })
-    return nil, response and response.Error or "No response from pool"
-  end
-
-  return {
-    balanceX = response.BalanceX,
-    balanceY = response.BalanceY,
-    lpBalance = response.Balance,
-    totalSupply = response.TotalSupply,
-    account = response.Account
-  }
+  end)
 end
 
 -- Discover Permaswap pools (this would require some external source or registry)
-function Permaswap.discoverPools()
+function Permaswap.discoverPools(callback)
   -- In a real implementation, this might query a registry process or use a predefined list
   -- For now, we'll return a placeholder message
   Logger.warn("Pool discovery not implemented, use a predefined list of pool addresses")
-  return nil, "Pool discovery requires external configuration"
+  callback(nil, "Pool discovery requires external configuration")
 end
 
 return Permaswap
