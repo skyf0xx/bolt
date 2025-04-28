@@ -1,6 +1,6 @@
-local Constants = require('arbitrage.constants')
-local Logger = require('arbitrage.logger').createLogger("Graph")
-local Utils = require('arbitrage.utils')
+local Constants = require('dex.constants')
+local Logger = require('dex.logger').createLogger("Graph")
+local Utils = require('dex.utils')
 
 local Graph = {}
 

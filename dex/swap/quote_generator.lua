@@ -1,10 +1,10 @@
-local BigDecimal = require('arbitrage.utils.big_decimal')
-local Constants = require('arbitrage.constants')
-local Logger = require('arbitrage.logger').createLogger("QuoteGenerator")
-local Utils = require('arbitrage.utils')
-local Calculator = require('arbitrage.swap.calculator')
-local TokenRepository = require('arbitrage.db.token_repository')
-local PoolRepository = require('arbitrage.db.pool_repository')
+local BigDecimal = require('dex.utils.big_decimal')
+local Constants = require('dex.constants')
+local Logger = require('dex.logger').createLogger("QuoteGenerator")
+local Utils = require('dex.utils')
+local Calculator = require('dex.swap.calculator')
+local TokenRepository = require('dex.db.token_repository')
+local PoolRepository = require('dex.db.pool_repository')
 
 local QuoteGenerator = {}
 

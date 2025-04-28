@@ -1,5 +1,5 @@
 local Utils = {}
-local Constants = require('arbitrage.constants')
+local Constants = require('dex.constants')
 local json = require('json')
 
 -- String manipulation utilities

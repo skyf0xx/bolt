@@ -1,8 +1,8 @@
-local Constants = require('arbitrage.constants')
-local Logger = require('arbitrage.logger').createLogger("PathFinder")
-local Utils = require('arbitrage.utils')
-local BigDecimal = require('arbitrage.utils.big_decimal')
-local Collector = require('arbitrage.collectors.collector')
+local Constants = require('dex.constants')
+local Logger = require('dex.logger').createLogger("PathFinder")
+local Utils = require('dex.utils')
+local BigDecimal = require('dex.utils.big_decimal')
+local Collector = require('dex.collectors.collector')
 
 local PathFinder = {}
 

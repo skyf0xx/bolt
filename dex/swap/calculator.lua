@@ -1,11 +1,11 @@
-local BigDecimal = require('arbitrage.utils.big_decimal')
-local Constants = require('arbitrage.constants')
-local Logger = require('arbitrage.logger').createLogger("SwapCalculator")
-local Utils = require('arbitrage.utils')
-local PermaswapFormula = require('arbitrage.swap.permaswap_formula')
-local BotegaFormula = require('arbitrage.swap.botega_formula')
-local PoolRepository = require('arbitrage.db.pool_repository')
-local Poller = require('arbitrage.reserve.poller')
+local BigDecimal = require('dex.utils.big_decimal')
+local Constants = require('dex.constants')
+local Logger = require('dex.logger').createLogger("SwapCalculator")
+local Utils = require('dex.utils')
+local PermaswapFormula = require('dex.swap.permaswap_formula')
+local BotegaFormula = require('dex.swap.botega_formula')
+local PoolRepository = require('dex.db.pool_repository')
+local Poller = require('dex.reserve.poller')
 
 local Calculator = {}
 
@@ -54,7 +54,7 @@ function Calculator.calculateSwapOutput(poolId, tokenIn, amountIn, callback)
     local bdAmountIn = BigDecimal.new(amountIn)
     local bdReserveIn = BigDecimal.new(reserveIn)
     local reserveRatioLimit = BigDecimal.new(Constants.NUMERIC.RESERVE_RATIO_LIMIT *
-    Constants.NUMERIC.BASIS_POINTS_MULTIPLIER)
+      Constants.NUMERIC.BASIS_POINTS_MULTIPLIER)
     local maxInput = BigDecimal.divide(BigDecimal.multiply(bdReserveIn, reserveRatioLimit),
       BigDecimal.new(Constants.NUMERIC.BASIS_POINTS_MULTIPLIER))
 
@@ -152,7 +152,7 @@ function Calculator.calculatePathOutput(path, inputAmount, callback)
 
         local stepFeeBps = stepResult.fee_bps
         result.total_fee_bps = result.total_fee_bps + stepFeeBps -
-        (result.total_fee_bps * stepFeeBps / Constants.NUMERIC.BASIS_POINTS_MULTIPLIER)
+            (result.total_fee_bps * stepFeeBps / Constants.NUMERIC.BASIS_POINTS_MULTIPLIER)
 
         processStep(index + 1, stepResult.amount_out)
       end)

@@ -1,8 +1,8 @@
 local sqlite3 = require('lsqlite3')
-local Constants = require('arbitrage.constants')
-local Logger = require('arbitrage.logger').createLogger("PoolRepository")
-local Utils = require('arbitrage.utils')
-local TokenRepository = require('arbitrage.db.token_repository')
+local Constants = require('dex.constants')
+local Logger = require('dex.logger').createLogger("PoolRepository")
+local Utils = require('dex.utils')
+local TokenRepository = require('dex.db.token_repository')
 
 local PoolRepository = {}
 
