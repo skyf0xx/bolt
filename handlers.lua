@@ -397,47 +397,11 @@ function Handlers.handleCollectData(msg)
   end)
 end
 
--- Main handler function
--- Update the main handler function in handlers.lua to include the new polling cycle handler
+-- Note: we're removing the handleRequest method that had the switch-case
+-- and just exporting the individual handler functions
 
-function Handlers.handleRequest(msg)
-  local action = msg.Action
-
-  if not action then
-    Handlers.handleError(msg, "Missing Action parameter", "ERR_MISSING_ACTION")
-    return
-  end
-
-  -- Route to specific handler based on action
-  if action == "Status" then
-    Handlers.handleStatus(msg)
-  elseif action == "TokenList" then
-    Handlers.handleTokenList(msg)
-  elseif action == "PoolList" then
-    Handlers.handlePoolList(msg)
-  elseif action == "Quote" then
-    Handlers.handleQuote(msg)
-  elseif action == "FindPaths" then
-    Handlers.handleFindPaths(msg)
-  elseif action == "FindRoute" then
-    Handlers.handleFindRoute(msg)
-  elseif action == "CalculateOutput" then
-    Handlers.handleCalculateOutput(msg)
-  elseif action == "FindArbitrage" then
-    Handlers.handleFindArbitrage(msg)
-  elseif action == "RefreshReserves" then
-    Handlers.handleRefreshReserves(msg)
-  elseif action == "PollingCycle" then
-    Handlers.handlePollingCycle(msg)
-  elseif action == "CollectData" then
-    Handlers.handleCollectData(msg)
-  elseif action == "Initialize" then
-    Init.handleInitMessage(msg)
-  elseif action == "Reset" then
-    Init.handleResetMessage(msg)
-  else
-    Handlers.handleError(msg, "Unknown action: " .. action, "ERR_UNKNOWN_ACTION")
-  end
-end
+-- These are the initialization handlers
+Handlers.handleInitMessage = Init.handleInitMessage
+Handlers.handleResetMessage = Init.handleResetMessage
 
 return Handlers
