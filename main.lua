@@ -29,18 +29,6 @@ local function initialize()
   -- Initialize all components
   components = Init.setupComponents(db)
 
-  -- Initial data collection and graph building
-  Init.collectInitialData(components, function(success, result)
-    if success then
-      Logger.info("Initial data collection complete")
-
-      -- Start background reserve refresh
-      components.poller.startBackgroundRefresh()
-    else
-      Logger.error("Initial data collection failed", { error = result })
-    end
-  end)
-
   return true
 end
 

@@ -6,7 +6,6 @@ local TokenRepository = require('arbitrage.db.token_repository')
 local PoolRepository = require('arbitrage.db.pool_repository')
 local Collector = require('arbitrage.collectors.collector')
 local Graph = require('arbitrage.graph.graph')
-local Builder = require('arbitrage.graph.builder')
 local PathFinder = require('arbitrage.graph.path_finder')
 local Poller = require('arbitrage.reserve.poller')
 local Calculator = require('arbitrage.swap.calculator')
@@ -146,22 +145,7 @@ function Init.initialize(dbPath, callback)
     return
   end
 
-  -- Setup components
-  local components = Init.setupComponents(db)
-
-  -- Collect initial data and build graph
-  Init.collectInitialData(components, function(success, err)
-    if not success then
-      callback(false, err)
-      return
-    end
-
-    -- Start background reserve refresh
-    components.poller.startBackgroundRefresh()
-
-    Logger.info("DEX Aggregator initialization complete")
-    callback(true, components)
-  end)
+  Init.setupComponents(db)
 end
 
 -- Handle incoming initialization message

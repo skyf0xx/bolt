@@ -3,11 +3,6 @@ local Logger = require('arbitrage.logger').createLogger("Handlers")
 local Utils = require('arbitrage.utils')
 local TokenRepository = require('arbitrage.db.token_repository')
 local PoolRepository = require('arbitrage.db.pool_repository')
-local Collector = require('arbitrage.collectors.collector')
-local PathFinder = require('arbitrage.graph.path_finder')
-local Calculator = require('arbitrage.swap.calculator')
-local QuoteGenerator = require('arbitrage.swap.quote_generator')
-local Poller = require('arbitrage.reserve.poller')
 local Init = require('arbitrage.init')
 
 local Handlers = {}
