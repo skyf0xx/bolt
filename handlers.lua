@@ -218,6 +218,15 @@ function Handlers.handleFindRoute(msg)
   end)
 end
 
+function Handlers.handlePollingCycle(msg)
+  if not components.poller then
+    Handlers.handleError(msg, "Poller not initialized", "ERR_POLLER_NOT_INITIALIZED")
+    return
+  end
+
+  components.poller.executePollingCycle(msg)
+end
+
 -- Handler for calculating swap output
 function Handlers.handleCalculateOutput(msg)
   if not components.calculator then
@@ -389,6 +398,8 @@ function Handlers.handleCollectData(msg)
 end
 
 -- Main handler function
+-- Update the main handler function in handlers.lua to include the new polling cycle handler
+
 function Handlers.handleRequest(msg)
   local action = msg.Action
 
@@ -416,6 +427,8 @@ function Handlers.handleRequest(msg)
     Handlers.handleFindArbitrage(msg)
   elseif action == "RefreshReserves" then
     Handlers.handleRefreshReserves(msg)
+  elseif action == "PollingCycle" then
+    Handlers.handlePollingCycle(msg)
   elseif action == "CollectData" then
     Handlers.handleCollectData(msg)
   elseif action == "Initialize" then

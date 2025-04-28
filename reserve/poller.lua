@@ -1,3 +1,5 @@
+-- Updated poller.lua with ao.schedule removed
+
 local Constants = require('arbitrage.constants')
 local Logger = require('arbitrage.logger').createLogger("ReservePoller")
 local Utils = require('arbitrage.utils')
@@ -13,6 +15,7 @@ function Poller.init(db)
   Poller.db = db
   Poller.cache = Cache.init()
   Poller.inProgressPolls = {}
+  Poller.isRefreshing = false
   Logger.info("Reserve poller initialized")
   return Poller
 end
@@ -197,6 +200,15 @@ function Poller.refreshStaleReserves(maxAge, batchSize, callback)
     return
   end
 
+  -- Avoid overlapping refreshes
+  if Poller.isRefreshing then
+    Logger.debug("Skipping refresh, previous still in progress")
+    callback({ refreshed = 0, skipped = true }, "Refresh already in progress")
+    return
+  end
+
+  Poller.isRefreshing = true
+
   maxAge = maxAge or Constants.TIME.RESERVE_CACHE_EXPIRY
   batchSize = batchSize or Constants.OPTIMIZATION.BATCH_SIZE
 
@@ -213,6 +225,7 @@ function Poller.refreshStaleReserves(maxAge, batchSize, callback)
   end
 
   if #pools == 0 then
+    Poller.isRefreshing = false
     callback({ refreshed = 0 }, "No stale reserves found")
     return
   end
@@ -225,6 +238,7 @@ function Poller.refreshStaleReserves(maxAge, batchSize, callback)
 
   -- Poll fresh reserves
   Poller.pollMultiplePools(poolIds, true, function(results)
+    Poller.isRefreshing = false
     callback({
       refreshed = Utils.tableSize(results.reserves),
       failed = Utils.tableSize(results.errors),
@@ -233,59 +247,35 @@ function Poller.refreshStaleReserves(maxAge, batchSize, callback)
   end)
 end
 
--- Start a background refreshing process
-function Poller.startBackgroundRefresh(interval, batchSize)
-  interval = interval or Constants.TIME.RESERVE_CACHE_EXPIRY
-  batchSize = batchSize or Constants.OPTIMIZATION.BATCH_SIZE
+-- Execute a single polling cycle
+function Poller.executePollingCycle(msg)
+  local maxAge = msg.MaxAge or Constants.TIME.RESERVE_CACHE_EXPIRY
+  local batchSize = msg.BatchSize or Constants.OPTIMIZATION.BATCH_SIZE
 
-  Logger.info("Starting background reserve refresh", { interval = interval, batchSize = batchSize })
+  Logger.info("Executing polling cycle", { maxAge = maxAge, batchSize = batchSize })
 
-  -- Clear any existing timer
-  if Poller.refreshTimer then
-    Poller.stopBackgroundRefresh()
-  end
-
-  -- Create a new timer
-  Poller.refreshTimer = true
-  Poller.isRefreshing = false
-
-  -- Define the refresh function
-  local function doRefresh()
-    -- Avoid overlapping refreshes
-    if Poller.isRefreshing then
-      Logger.debug("Skipping refresh, previous still in progress")
-      return
-    end
-
-    Poller.isRefreshing = true
-
-    Poller.refreshStaleReserves(interval, batchSize, function(result)
-      Poller.isRefreshing = false
-
+  Poller.refreshStaleReserves(maxAge, batchSize, function(result, err)
+    if err and not result.skipped then
+      Logger.warn("Polling cycle completed with errors", { error = err })
+    else
       if result.refreshed > 0 then
-        Logger.info("Background refresh completed", {
+        Logger.info("Polling cycle completed", {
           refreshed = result.refreshed,
           failed = result.failed
         })
       end
 
-      -- Schedule next refresh if timer is still active
-      if Poller.refreshTimer then
-        ao.schedule(interval, doRefresh)
+      -- Reply with the result
+      if msg.reply then
+        msg.reply({
+          Status = "Success",
+          RefreshResult = result,
+          Timestamp = os.time(),
+          NextPollDue = os.time() + maxAge
+        })
       end
-    end)
-  end
-
-  -- Start the refresh cycle
-  ao.schedule(interval, doRefresh)
-  return true
-end
-
--- Stop background refreshing
-function Poller.stopBackgroundRefresh()
-  Logger.info("Stopping background reserve refresh")
-  Poller.refreshTimer = nil
-  return true
+    end
+  end)
 end
 
 -- Get cache statistics
