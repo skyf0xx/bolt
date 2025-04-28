@@ -1,7 +1,7 @@
-local BigDecimal = require('arbitrage.utils.big_decimal')
-local Constants = require('arbitrage.constants')
-local Logger = require('arbitrage.logger').createLogger("PermaswapCollector")
-local Utils = require('arbitrage.utils')
+local BigDecimal = require('dex.utils.big_decimal')
+local Constants = require('dex.constants')
+local Logger = require('dex.logger').createLogger("PermaswapCollector")
+local Utils = require('dex.utils')
 
 local Permaswap = {}
 

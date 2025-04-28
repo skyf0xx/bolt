@@ -1,5 +1,5 @@
-local Constants = require('arbitrage.constants')
-local Utils = require('arbitrage.utils')
+local Constants = require('dex.constants')
+local Utils = require('dex.utils')
 
 local Logger = {}
 

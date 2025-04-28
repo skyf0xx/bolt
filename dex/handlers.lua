@@ -1,9 +1,9 @@
-local Constants = require('arbitrage.constants')
-local Logger = require('arbitrage.logger').createLogger("Handlers")
-local Utils = require('arbitrage.utils')
-local TokenRepository = require('arbitrage.db.token_repository')
-local PoolRepository = require('arbitrage.db.pool_repository')
-local Init = require('arbitrage.init')
+local Constants = require('dex.constants')
+local Logger = require('dex.logger').createLogger("Handlers")
+local Utils = require('dex.utils')
+local TokenRepository = require('dex.db.token_repository')
+local PoolRepository = require('dex.db.pool_repository')
+local Init = require('dex.init')
 
 local Handlers = {}
 local components = {}

@@ -1,9 +1,9 @@
 -- DEX Aggregator - Main Entry Point
-local Constants = require('arbitrage.constants')
-local Logger = require('arbitrage.logger').createLogger("Main")
-local Handlers = require('arbitrage.handlers')
-local Init = require('arbitrage.init')
-local Schema = require('arbitrage.db.schema')
+local Constants = require('dex.constants')
+local Logger = require('dex.logger').createLogger("Main")
+local Handlers = require('dex.handlers')
+local Init = require('dex.init')
+local Schema = require('dex.db.schema')
 
 -- This will store our application components
 local components = {}

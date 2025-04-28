@@ -1,5 +1,5 @@
 local bint = require('bint')(256) -- Using the bint library for arbitrary precision
-local Constants = require('arbitrage.constants')
+local Constants = require('dex.constants')
 
 local BigDecimal = {}
 

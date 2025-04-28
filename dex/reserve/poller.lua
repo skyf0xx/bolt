@@ -1,10 +1,10 @@
-local Constants = require('arbitrage.constants')
-local Logger = require('arbitrage.logger').createLogger("ReservePoller")
-local Utils = require('arbitrage.utils')
-local Permaswap = require('arbitrage.collectors.permaswap')
-local Botega = require('arbitrage.collectors.botega')
-local Cache = require('arbitrage.reserve.cache')
-local PoolRepository = require('arbitrage.db.pool_repository')
+local Constants = require('dex.constants')
+local Logger = require('dex.logger').createLogger("ReservePoller")
+local Utils = require('dex.utils')
+local Permaswap = require('dex.collectors.permaswap')
+local Botega = require('dex.collectors.botega')
+local Cache = require('dex.reserve.cache')
+local PoolRepository = require('dex.db.pool_repository')
 
 local Poller = {}
 
