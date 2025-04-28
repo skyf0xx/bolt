@@ -93,6 +93,10 @@ Handlers.add("CollectData",
   Handlers.utils.hasMatchingTag("Action", "CollectData"),
   function(msg) Handlers.handleRequest(msg) end)
 
+Handlers.add("PollingCycle",
+  Handlers.utils.hasMatchingTag("Action", "PollingCycle"),
+  function(msg) Handlers.handleRequest(msg) end)
+
 -- Initialize once on process start
 local success = initialize()
 if success then
