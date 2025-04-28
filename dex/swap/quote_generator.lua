@@ -125,48 +125,32 @@ function QuoteGenerator.applySlippage(amount, slippageBps)
 end
 
 -- Get token pair information by IDs
+-- Get token pair information by IDs
 function QuoteGenerator.getTokenPairInfo(sourceTokenId, targetTokenId, callback)
   if not QuoteGenerator.db then
     callback(nil, "Database not initialized")
     return
   end
 
-  -- Get both tokens in parallel
-  local sourceToken, targetToken
-  local pendingTokens = 2
-
-  local function checkCompletion()
-    if pendingTokens == 0 then
-      callback({
-        source = sourceToken,
-        target = targetToken
-      })
-    end
+  -- Get source token directly (synchronously)
+  local sourceToken, sourceErr = TokenRepository.getToken(QuoteGenerator.db, sourceTokenId)
+  if not sourceToken then
+    Logger.warn("Source token not found", { id = sourceTokenId, error = sourceErr })
+    sourceToken = { id = sourceTokenId }
   end
 
-  -- Get source token
-  TokenRepository.getToken(QuoteGenerator.db, sourceTokenId, function(token, err)
-    pendingTokens = pendingTokens - 1
-    if token then
-      sourceToken = token
-    else
-      Logger.warn("Source token not found", { id = sourceTokenId, error = err })
-      sourceToken = { id = sourceTokenId }
-    end
-    checkCompletion()
-  end)
+  -- Get target token directly (synchronously)
+  local targetToken, targetErr = TokenRepository.getToken(QuoteGenerator.db, targetTokenId)
+  if not targetToken then
+    Logger.warn("Target token not found", { id = targetTokenId, error = targetErr })
+    targetToken = { id = targetTokenId }
+  end
 
-  -- Get target token
-  TokenRepository.getToken(QuoteGenerator.db, targetTokenId, function(token, err)
-    pendingTokens = pendingTokens - 1
-    if token then
-      targetToken = token
-    else
-      Logger.warn("Target token not found", { id = targetTokenId, error = err })
-      targetToken = { id = targetTokenId }
-    end
-    checkCompletion()
-  end)
+  -- Return both tokens
+  callback({
+    source = sourceToken,
+    target = targetToken
+  })
 end
 
 -- Generate a human-readable route description
