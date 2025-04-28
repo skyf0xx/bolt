@@ -1,5 +1,3 @@
--- Updated poller.lua with ao.schedule removed
-
 local Constants = require('arbitrage.constants')
 local Logger = require('arbitrage.logger').createLogger("ReservePoller")
 local Utils = require('arbitrage.utils')
