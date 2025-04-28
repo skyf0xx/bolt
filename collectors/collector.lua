@@ -16,9 +16,15 @@ function Collector.init(db)
 end
 
 -- Collect data from a specific DEX
-function Collector.collectFromDex(source, poolAddresses)
+function Collector.collectFromDex(source, poolAddresses, callback)
   if not poolAddresses or #poolAddresses == 0 then
-    return { pools = {}, tokens = {}, reserves = {}, errors = { message = "No pool addresses provided" } }
+    callback({
+      pools = {},
+      tokens = {},
+      reserves = {},
+      errors = { message = "No pool addresses provided" }
+    })
+    return
   end
 
   local collector
@@ -27,15 +33,23 @@ function Collector.collectFromDex(source, poolAddresses)
   elseif source == Constants.SOURCE.BOTEGA then
     collector = Botega
   else
-    return { pools = {}, tokens = {}, reserves = {}, errors = { message = "Invalid source: " .. tostring(source) } }
+    callback({
+      pools = {},
+      tokens = {},
+      reserves = {},
+      errors = { message = "Invalid source: " .. tostring(source) }
+    })
+    return
   end
 
   Logger.info("Collecting data from " .. source, { poolCount = #poolAddresses })
-  return collector.collectAllPoolsData(poolAddresses)
+  collector.collectAllPoolsData(poolAddresses, function(results)
+    callback(results)
+  end)
 end
 
 -- Collect data from all configured DEXes
-function Collector.collectAll(poolList)
+function Collector.collectAll(poolList, finalCallback)
   local results = {
     pools = {},
     tokens = {},
@@ -62,61 +76,79 @@ function Collector.collectAll(poolList)
     ::continue::
   end
 
+  -- Track pending sources
+  local pendingSources = 0
+  for _ in pairs(poolsBySource) do
+    pendingSources = pendingSources + 1
+  end
+
+  if pendingSources == 0 then
+    -- No valid sources, return empty results
+    finalCallback(results)
+    return
+  end
+
   -- Collect from each source
   for source, addresses in pairs(poolsBySource) do
-    local sourceResults = Collector.collectFromDex(source, addresses)
+    Collector.collectFromDex(source, addresses, function(sourceResults)
+      pendingSources = pendingSources - 1
 
-    -- Merge results
-    for _, pool in ipairs(sourceResults.pools) do
-      table.insert(results.pools, pool)
-    end
+      -- Merge results
+      for _, pool in ipairs(sourceResults.pools) do
+        table.insert(results.pools, pool)
+      end
 
-    for _, token in ipairs(sourceResults.tokens) do
-      local exists = false
-      for i, existingToken in ipairs(results.tokens) do
-        if existingToken.id == token.id then
-          -- Update token if new data is more complete
-          if token.symbol and token.symbol ~= "" and existingToken.symbol == "" then
-            results.tokens[i].symbol = token.symbol
+      for _, token in ipairs(sourceResults.tokens) do
+        local exists = false
+        for i, existingToken in ipairs(results.tokens) do
+          if existingToken.id == token.id then
+            -- Update token if new data is more complete
+            if token.symbol and token.symbol ~= "" and existingToken.symbol == "" then
+              results.tokens[i].symbol = token.symbol
+            end
+            if token.name and token.name ~= "" and existingToken.name == "" then
+              results.tokens[i].name = token.name
+            end
+            exists = true
+            break
           end
-          if token.name and token.name ~= "" and existingToken.name == "" then
-            results.tokens[i].name = token.name
-          end
-          exists = true
-          break
+        end
+
+        if not exists then
+          table.insert(results.tokens, token)
         end
       end
 
-      if not exists then
-        table.insert(results.tokens, token)
+      -- Merge reserves
+      for poolId, reserve in pairs(sourceResults.reserves) do
+        results.reserves[poolId] = reserve
       end
-    end
 
-    -- Merge reserves
-    for poolId, reserve in pairs(sourceResults.reserves) do
-      results.reserves[poolId] = reserve
-    end
+      -- Merge errors
+      for poolId, err in pairs(sourceResults.errors) do
+        results.errors[poolId] = err
+      end
 
-    -- Merge errors
-    for poolId, err in pairs(sourceResults.errors) do
-      results.errors[poolId] = err
-    end
+      -- If all sources are processed, return the results
+      if pendingSources == 0 then
+        Logger.info("Collection completed", {
+          poolCount = #results.pools,
+          tokenCount = #results.tokens,
+          reserveCount = Utils.tableSize(results.reserves),
+          errorCount = Utils.tableSize(results.errors)
+        })
+
+        finalCallback(results)
+      end
+    end)
   end
-
-  Logger.info("Collection completed", {
-    poolCount = #results.pools,
-    tokenCount = #results.tokens,
-    reserveCount = Utils.tableSize(results.reserves),
-    errorCount = Utils.tableSize(results.errors)
-  })
-
-  return results
 end
 
 -- Save collected data to database
-function Collector.saveToDatabase(data)
+function Collector.saveToDatabase(data, callback)
   if not Collector.db then
-    return false, "Database not initialized"
+    callback(false, "Database not initialized")
+    return
   end
 
   local db = Collector.db
@@ -130,7 +162,8 @@ function Collector.saveToDatabase(data)
   if not tokenSuccess then
     db:exec("ROLLBACK")
     Logger.error("Failed to save tokens", { error = tokenErr })
-    return false, "Failed to save tokens: " .. tokenErr
+    callback(false, "Failed to save tokens: " .. tokenErr)
+    return
   end
 
   -- Save pools
@@ -138,7 +171,23 @@ function Collector.saveToDatabase(data)
   if not poolSuccess then
     db:exec("ROLLBACK")
     Logger.error("Failed to save pools", { error = poolErr })
-    return false, "Failed to save pools: " .. poolErr
+    callback(false, "Failed to save pools: " .. poolErr)
+    return
+  end
+
+  -- Track pending reserve updates
+  local pendingReserves = Utils.tableSize(data.reserves)
+
+  if pendingReserves == 0 then
+    -- No reserves to update, commit and return
+    db:exec("COMMIT")
+    Logger.info("Data saved to database", {
+      tokens = #data.tokens,
+      pools = #data.pools,
+      reserves = 0
+    })
+    callback(true)
+    return
   end
 
   -- Save reserves
@@ -147,43 +196,50 @@ function Collector.saveToDatabase(data)
     local reserveB = reserve.reserve_b or "0"
 
     local reserveSuccess, reserveErr = PoolRepository.updateReserves(db, poolId, reserveA, reserveB)
+    pendingReserves = pendingReserves - 1
+
     if not reserveSuccess then
       Logger.warn("Failed to update reserves for pool", { pool = poolId, error = reserveErr })
       -- Continue with other reserves
     end
+
+    -- If all reserves are processed, commit and return
+    if pendingReserves == 0 then
+      db:exec("COMMIT")
+      Logger.info("Data saved to database", {
+        tokens = #data.tokens,
+        pools = #data.pools,
+        reserves = Utils.tableSize(data.reserves)
+      })
+      callback(true)
+    end
   end
-
-  -- Commit transaction
-  db:exec("COMMIT")
-
-  Logger.info("Data saved to database", {
-    tokens = #data.tokens,
-    pools = #data.pools,
-    reserves = Utils.tableSize(data.reserves)
-  })
-
-  return true
 end
 
 -- Get pools that need reserve refresh
-function Collector.getPoolsNeedingRefresh(maxAge)
+function Collector.getPoolsNeedingRefresh(maxAge, callback)
   if not Collector.db then
-    return {}, "Database not initialized"
+    callback({}, "Database not initialized")
+    return
   end
 
-  return PoolRepository.getPoolsNeedingReserveRefresh(Collector.db, maxAge)
+  local pools = PoolRepository.getPoolsNeedingReserveRefresh(Collector.db, maxAge)
+  callback(pools)
 end
 
 -- Refresh reserves for specific pools
-function Collector.refreshReserves(pools)
+function Collector.refreshReserves(pools, finalCallback)
   if not pools or #pools == 0 then
-    return true, "No pools to refresh"
+    finalCallback({ success = {}, errors = {} })
+    return
   end
 
   local results = {
     success = {},
     errors = {}
   }
+
+  local pendingPools = #pools
 
   for _, pool in ipairs(pools) do
     local source = pool.source
@@ -195,61 +251,97 @@ function Collector.refreshReserves(pools)
       collector = Botega
     else
       results.errors[pool.id] = "Invalid source: " .. tostring(source)
+      pendingPools = pendingPools - 1
+
+      if pendingPools == 0 then
+        finalCallback(results)
+      end
       goto continue
     end
 
     -- Fetch reserves
-    local reserves, err
     if source == Constants.SOURCE.PERMASWAP then
-      reserves, err = collector.fetchReserves(pool.id)
-      if reserves then
-        reserves = {
-          reserve_a = reserves.reserveX,
-          reserve_b = reserves.reserveY
-        }
-      end
+      collector.fetchReserves(pool.id, function(reserves, err)
+        pendingPools = pendingPools - 1
+
+        if not reserves then
+          results.errors[pool.id] = err
+        else
+          local normalizedReserves = {
+            reserve_a = reserves.reserveX,
+            reserve_b = reserves.reserveY
+          }
+
+          -- Update in database
+          if Collector.db then
+            local success, updateErr = PoolRepository.updateReserves(
+              Collector.db,
+              pool.id,
+              normalizedReserves.reserve_a,
+              normalizedReserves.reserve_b
+            )
+
+            if success then
+              results.success[pool.id] = normalizedReserves
+            else
+              results.errors[pool.id] = updateErr
+            end
+          else
+            results.success[pool.id] = normalizedReserves
+          end
+        end
+
+        if pendingPools == 0 then
+          Logger.info("Reserve refresh completed", {
+            successful = Utils.tableSize(results.success),
+            failed = Utils.tableSize(results.errors)
+          })
+          finalCallback(results)
+        end
+      end)
     else
-      reserves, err = collector.fetchReserves(pool.id)
-      if reserves then
-        reserves = {
-          reserve_a = reserves.reserveA,
-          reserve_b = reserves.reserveB
-        }
-      end
-    end
+      collector.fetchReserves(pool.id, function(reserves, err)
+        pendingPools = pendingPools - 1
 
-    if not reserves then
-      results.errors[pool.id] = err
-      goto continue
-    end
+        if not reserves then
+          results.errors[pool.id] = err
+        else
+          local normalizedReserves = {
+            reserve_a = reserves.reserveA,
+            reserve_b = reserves.reserveB
+          }
 
-    -- Update in database
-    if Collector.db then
-      local success, updateErr = PoolRepository.updateReserves(
-        Collector.db,
-        pool.id,
-        reserves.reserve_a,
-        reserves.reserve_b
-      )
+          -- Update in database
+          if Collector.db then
+            local success, updateErr = PoolRepository.updateReserves(
+              Collector.db,
+              pool.id,
+              normalizedReserves.reserve_a,
+              normalizedReserves.reserve_b
+            )
 
-      if success then
-        results.success[pool.id] = reserves
-      else
-        results.errors[pool.id] = updateErr
-      end
-    else
-      results.success[pool.id] = reserves
+            if success then
+              results.success[pool.id] = normalizedReserves
+            else
+              results.errors[pool.id] = updateErr
+            end
+          else
+            results.success[pool.id] = normalizedReserves
+          end
+        end
+
+        if pendingPools == 0 then
+          Logger.info("Reserve refresh completed", {
+            successful = Utils.tableSize(results.success),
+            failed = Utils.tableSize(results.errors)
+          })
+          finalCallback(results)
+        end
+      end)
     end
 
     ::continue::
   end
-
-  Logger.info("Reserve refresh completed", {
-    successful = Utils.tableSize(results.success),
-    failed = Utils.tableSize(results.errors)
-  })
-
-  return results
 end
 
 -- Get configured pool list (either from database or configuration)
@@ -276,16 +368,23 @@ function Collector.getConfiguredPools()
 end
 
 -- Calculate output for a specific path (used by path finder)
-function Collector.calculatePathOutput(path, inputAmount)
+function Collector.calculatePathOutput(path, inputAmount, callback)
   local result = {
     inputAmount = inputAmount,
     outputAmount = inputAmount,
     steps = {}
   }
 
-  local currentInput = inputAmount
+  -- Process path steps recursively
+  local function processStep(index, currentInput)
+    if index > #path then
+      -- All steps processed, return result
+      result.outputAmount = currentInput
+      callback(result)
+      return
+    end
 
-  for i, step in ipairs(path) do
+    local step = path[index]
     local poolId = step.pool_id
     local tokenIn = step.from
     local tokenOut = step.to
@@ -293,13 +392,15 @@ function Collector.calculatePathOutput(path, inputAmount)
     -- Get pool data
     local pool = PoolRepository.getPool(Collector.db, poolId)
     if not pool then
-      return nil, "Pool not found: " .. poolId
+      callback(nil, "Pool not found: " .. poolId)
+      return
     end
 
     -- Get reserves
     local reserves = PoolRepository.getReserves(Collector.db, poolId)
     if not reserves then
-      return nil, "Reserves not found for pool: " .. poolId
+      callback(nil, "Reserves not found for pool: " .. poolId)
+      return
     end
 
     -- Determine which reserve corresponds to input token
@@ -313,49 +414,62 @@ function Collector.calculatePathOutput(path, inputAmount)
     end
 
     -- Calculate output amount based on pool source
-    local outputAmount
     if pool.source == Constants.SOURCE.PERMASWAP then
       -- Use Permaswap formula
-      outputAmount = Permaswap.calculateOutputAmount(
+      local outputAmount = Permaswap.calculateOutputAmount(
         currentInput,
         reserveIn,
         reserveOut,
         pool.fee_bps
       )
+
+      -- Add step to result
+      table.insert(result.steps, {
+        pool_id = poolId,
+        source = pool.source,
+        token_in = tokenIn,
+        token_out = tokenOut,
+        amount_in = currentInput,
+        amount_out = outputAmount.value,
+        fee_bps = pool.fee_bps
+      })
+
+      -- Process next step
+      processStep(index + 1, outputAmount.value)
     elseif pool.source == Constants.SOURCE.BOTEGA then
       -- Convert fee from basis points to percentage for Botega calculation
       local feePercentage = pool.fee_bps / 100
-      outputAmount = Botega.calculateOutputAmount(
+      local outputAmount = Botega.calculateOutputAmount(
         currentInput,
         reserveIn,
         reserveOut,
         feePercentage
       )
+
+      -- Add step to result
+      table.insert(result.steps, {
+        pool_id = poolId,
+        source = pool.source,
+        token_in = tokenIn,
+        token_out = tokenOut,
+        amount_in = currentInput,
+        amount_out = outputAmount.value,
+        fee_bps = pool.fee_bps
+      })
+
+      -- Process next step
+      processStep(index + 1, outputAmount.value)
     else
-      return nil, "Unsupported pool source: " .. tostring(pool.source)
+      callback(nil, "Unsupported pool source: " .. tostring(pool.source))
     end
-
-    -- Add step to result
-    table.insert(result.steps, {
-      pool_id = poolId,
-      source = pool.source,
-      token_in = tokenIn,
-      token_out = tokenOut,
-      amount_in = currentInput,
-      amount_out = outputAmount.value,
-      fee_bps = pool.fee_bps
-    })
-
-    -- Update for next step
-    currentInput = outputAmount.value
   end
 
-  result.outputAmount = currentInput
-  return result
+  -- Start processing from the first step
+  processStep(1, inputAmount)
 end
 
 -- Execute a swap across multiple pools (path)
-function Collector.executePathSwap(path, inputAmount, minOutputAmount, userAddress)
+function Collector.executePathSwap(path, inputAmount, minOutputAmount, userAddress, callback)
   -- This would execute a swap across multiple pools
   -- In a production implementation, this would need to handle:
   -- 1. Cross-DEX token transfers
@@ -363,7 +477,7 @@ function Collector.executePathSwap(path, inputAmount, minOutputAmount, userAddre
   -- 3. Slippage protection at each step
 
   Logger.warn("Path execution not fully implemented, would execute multiple swaps")
-  return nil, "Multi-pool swaps require cross-process coordination"
+  callback(nil, "Multi-pool swaps require cross-process coordination")
 end
 
 return Collector
