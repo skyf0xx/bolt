@@ -44,58 +44,58 @@ local function initialize()
   return true
 end
 
--- Register all message handlers
+-- Register all message handlers - now directly using the handler functions
 Handlers.add("Initialize",
   Handlers.utils.hasMatchingTag("Action", "Initialize"),
-  function(msg) Handlers.handleRequest(msg) end)
+  Handlers.handleInitMessage)
 
 Handlers.add("Reset",
   Handlers.utils.hasMatchingTag("Action", "Reset"),
-  function(msg) Handlers.handleRequest(msg) end)
+  Handlers.handleResetMessage)
 
 Handlers.add("Status",
   Handlers.utils.hasMatchingTag("Action", "Status"),
-  function(msg) Handlers.handleRequest(msg) end)
+  Handlers.handleStatus)
 
 Handlers.add("TokenList",
   Handlers.utils.hasMatchingTag("Action", "TokenList"),
-  function(msg) Handlers.handleRequest(msg) end)
+  Handlers.handleTokenList)
 
 Handlers.add("PoolList",
   Handlers.utils.hasMatchingTag("Action", "PoolList"),
-  function(msg) Handlers.handleRequest(msg) end)
+  Handlers.handlePoolList)
 
 Handlers.add("Quote",
   Handlers.utils.hasMatchingTag("Action", "Quote"),
-  function(msg) Handlers.handleRequest(msg) end)
+  Handlers.handleQuote)
 
 Handlers.add("FindPaths",
   Handlers.utils.hasMatchingTag("Action", "FindPaths"),
-  function(msg) Handlers.handleRequest(msg) end)
+  Handlers.handleFindPaths)
 
 Handlers.add("FindRoute",
   Handlers.utils.hasMatchingTag("Action", "FindRoute"),
-  function(msg) Handlers.handleRequest(msg) end)
+  Handlers.handleFindRoute)
 
 Handlers.add("CalculateOutput",
   Handlers.utils.hasMatchingTag("Action", "CalculateOutput"),
-  function(msg) Handlers.handleRequest(msg) end)
+  Handlers.handleCalculateOutput)
 
 Handlers.add("FindArbitrage",
   Handlers.utils.hasMatchingTag("Action", "FindArbitrage"),
-  function(msg) Handlers.handleRequest(msg) end)
+  Handlers.handleFindArbitrage)
 
 Handlers.add("RefreshReserves",
   Handlers.utils.hasMatchingTag("Action", "RefreshReserves"),
-  function(msg) Handlers.handleRequest(msg) end)
+  Handlers.handleRefreshReserves)
 
 Handlers.add("CollectData",
   Handlers.utils.hasMatchingTag("Action", "CollectData"),
-  function(msg) Handlers.handleRequest(msg) end)
+  Handlers.handleCollectData)
 
 Handlers.add("PollingCycle",
   Handlers.utils.hasMatchingTag("Action", "PollingCycle"),
-  function(msg) Handlers.handleRequest(msg) end)
+  Handlers.handlePollingCycle)
 
 -- Initialize once on process start
 local success = initialize()
