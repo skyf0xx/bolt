@@ -1,3 +1,3 @@
 {
-    "Lua.diagnostics.globals": ["Colors", "Send", "ao"]
+    "Lua.diagnostics.globals": ["Colors", "Send", "ao", "Handlers"]
 }
