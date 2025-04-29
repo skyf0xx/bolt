@@ -2,7 +2,7 @@
 local Constants = require('dex.utils.constants')
 local Logger = require('dex.utils.logger')
 Logger = Logger.createLogger("Main")
-local Handlers = require('dex.handlers')
+local DexHandlers = require('dex.dexhandlers')
 local Init = require('dex.init')
 local Schema = require('dex.db.schema')
 
@@ -36,55 +36,55 @@ end
 -- Register all message handlers - now directly using the handler functions
 Handlers.add("Initialize",
   Handlers.utils.hasMatchingTag("Action", "Initialize"),
-  Handlers.handleInitMessage)
+  DexHandlers.handleInitMessage)
 
 Handlers.add("Reset",
   Handlers.utils.hasMatchingTag("Action", "Reset"),
-  Handlers.handleResetMessage)
+  DexHandlers.handleResetMessage)
 
 Handlers.add("Status",
   Handlers.utils.hasMatchingTag("Action", "Status"),
-  Handlers.handleStatus)
+  DexHandlers.handleStatus)
 
 Handlers.add("TokenList",
   Handlers.utils.hasMatchingTag("Action", "TokenList"),
-  Handlers.handleTokenList)
+  DexHandlers.handleTokenList)
 
 Handlers.add("PoolList",
   Handlers.utils.hasMatchingTag("Action", "PoolList"),
-  Handlers.handlePoolList)
+  DexHandlers.handlePoolList)
 
 Handlers.add("Quote",
   Handlers.utils.hasMatchingTag("Action", "Quote"),
-  Handlers.handleQuote)
+  DexHandlers.handleQuote)
 
 Handlers.add("FindPaths",
   Handlers.utils.hasMatchingTag("Action", "FindPaths"),
-  Handlers.handleFindPaths)
+  DexHandlers.handleFindPaths)
 
 Handlers.add("FindRoute",
   Handlers.utils.hasMatchingTag("Action", "FindRoute"),
-  Handlers.handleFindRoute)
+  DexHandlers.handleFindRoute)
 
 Handlers.add("CalculateOutput",
   Handlers.utils.hasMatchingTag("Action", "CalculateOutput"),
-  Handlers.handleCalculateOutput)
+  DexHandlers.handleCalculateOutput)
 
 Handlers.add("FindArbitrage",
   Handlers.utils.hasMatchingTag("Action", "FindArbitrage"),
-  Handlers.handleFindArbitrage)
+  DexHandlers.handleFindArbitrage)
 
 Handlers.add("RefreshReserves",
   Handlers.utils.hasMatchingTag("Action", "RefreshReserves"),
-  Handlers.handleRefreshReserves)
+  DexHandlers.handleRefreshReserves)
 
 Handlers.add("CollectData",
   Handlers.utils.hasMatchingTag("Action", "CollectData"),
-  Handlers.handleCollectData)
+  DexHandlers.handleCollectData)
 
 Handlers.add("PollingCycle",
   Handlers.utils.hasMatchingTag("Action", "PollingCycle"),
-  Handlers.handlePollingCycle)
+  DexHandlers.handlePollingCycle)
 
 -- Initialize once on process start
 local success = initialize()
@@ -95,4 +95,4 @@ else
 end
 
 -- Initialize handlers module with components
-Handlers.init(components)
+DexHandlers.init(components)
