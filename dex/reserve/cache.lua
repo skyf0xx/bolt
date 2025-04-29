@@ -7,9 +7,9 @@ local Cache = {}
 
 -- Initialize the cache
 function Cache.init()
-  Cache.data = {}
-  Cache.accessTimes = {}
-  Cache.size = 0
+  Cache.data = Cache.data or {}
+  Cache.accessTimes = Cache.accessTimes or {}
+  Cache.size = Cache.size or 0
   Cache.maxSize = Constants.OPTIMIZATION.CACHE_SIZE
   Cache.expiry = Constants.TIME.RESERVE_CACHE_EXPIRY
 
@@ -186,10 +186,10 @@ function Cache.configure(options)
 end
 
 -- Track cache hit/miss statistics
-Cache.hits = 0
-Cache.misses = 0
-Cache.hitRate = 0
-Cache.missRate = 0
+Cache.hits = Cache.hits or 0
+Cache.misses = Cache.misses or 0
+Cache.hitRate = Cache.hitRate or 0
+Cache.missRate = Cache.missRate or 0
 
 -- Get with hit/miss tracking
 function Cache.getWithStats(poolId)
