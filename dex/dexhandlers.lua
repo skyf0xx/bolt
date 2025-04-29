@@ -11,7 +11,15 @@ local components = {}
 
 -- Initialize handlers with required components
 function DexHandlers.init(comps)
-  components = comps
+  -- If components already exists, only update with new values
+  if components then
+    for k, v in pairs(comps) do
+      components[k] = v
+    end
+  else
+    components = comps
+  end
+
   Logger.info("DexHandlers initialized")
   return DexHandlers
 end

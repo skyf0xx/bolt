@@ -17,7 +17,7 @@ local Init = {}
 function Init.setupDatabase(dbPath)
   Logger.info("Setting up database", { path = dbPath })
 
-  -- Initialize database
+  -- Initialize database (reusing existing connection if available)
   local db, dbErr = Schema.init(dbPath)
   if not db then
     Logger.error("Database initialization failed", { error = dbErr })
@@ -48,33 +48,33 @@ function Init.getConfiguredPools()
 end
 
 -- Setup components and collect initial data
-function Init.setupComponents(db)
-  -- Initialize the collector with database connection
-  local collector = Collector.init(db)
+function Init.setupComponents(db, existingComponents)
+  existingComponents = existingComponents or {}
 
-  -- Initialize poller
-  local poller = Poller.init(db)
+  -- Reuse existing components or initialize new ones
+  existingComponents.collector = existingComponents.collector or Collector.init(db)
 
-  -- Initialize calculator
-  local calculator = Calculator.init(db, poller)
+  -- If poller exists, ensure it has the correct db reference
+  if existingComponents.poller then
+    existingComponents.poller.db = db
+  else
+    existingComponents.poller = Poller.init(db)
+  end
 
-  -- Initialize quote generator
-  local quoteGenerator = QuoteGenerator.init(db, calculator)
+  -- Initialize calculator with existing poller if available
+  existingComponents.calculator = existingComponents.calculator or Calculator.init(db, existingComponents.poller)
 
-  -- Create graph instance
-  local graph = Graph.new()
+  -- Initialize quote generator with existing calculator if available
+  existingComponents.quoteGenerator = existingComponents.quoteGenerator or
+  QuoteGenerator.init(db, existingComponents.calculator)
 
-  -- Initialize path finder with graph
-  local pathFinder = PathFinder.init(graph, db)
+  -- Reuse existing graph or create a new one
+  existingComponents.graph = existingComponents.graph or Graph.new()
 
-  return {
-    collector = collector,
-    poller = poller,
-    calculator = calculator,
-    quoteGenerator = quoteGenerator,
-    graph = graph,
-    pathFinder = pathFinder
-  }
+  -- Initialize path finder with existing graph if available
+  existingComponents.pathFinder = existingComponents.pathFinder or PathFinder.init(existingComponents.graph, db)
+
+  return existingComponents
 end
 
 -- Collect initial data and build graph
@@ -138,14 +138,18 @@ end
 function Init.initialize(dbPath, callback)
   Logger.info("Starting DEX Aggregator initialization")
 
-  -- Setup database
-  local db, dbErr = Init.setupDatabase(dbPath)
+  -- Setup database (reusing existing connection if available)
+  db = db or Init.setupDatabase(dbPath)
   if not db then
-    callback(false, dbErr)
+    callback(false, "Database initialization failed")
     return
   end
 
-  Init.setupComponents(db)
+  -- Setup components (preserving existing components)
+  components = components or {}
+  components = Init.setupComponents(db, components)
+
+  callback(true, { graph = components.graph })
 end
 
 -- Handle incoming initialization message
@@ -155,12 +159,30 @@ function Init.handleInitMessage(msg)
   end
 
   local dbPath = msg.DbPath or Constants.DB.FILENAME
+  local forceReinit = msg.ForceReinit == true
+
+  -- If we already have components and aren't forcing reinit, just report status
+  if components and components.graph and components.graph.initialized and not forceReinit then
+    Logger.info("Using existing initialized components")
+    msg.reply({
+      Status = "Success",
+      Components = "Reused",
+      IsReused = true,
+      Graph = {
+        Tokens = components.graph.tokenCount,
+        Pools = components.graph.edgeCount,
+        Sources = components.graph.sources
+      }
+    })
+    return
+  end
 
   Init.initialize(dbPath, function(success, result)
     if success then
       msg.reply({
         Status = "Success",
         Components = "Initialized",
+        IsReused = false,
         Graph = {
           Tokens = result.graph.tokenCount,
           Pools = result.graph.edgeCount,
@@ -199,18 +221,21 @@ function Init.handleResetMessage(msg)
 
   local dbPath = msg.DbPath or Constants.DB.FILENAME
 
-  -- Initialize database
-  local db, dbErr = Schema.init(dbPath)
+  -- Initialize database (use existing connection if available)
+  local db = Schema.db or Schema.init(dbPath)
   if not db then
     msg.reply({
       Status = "Error",
-      Error = "Database initialization failed: " .. dbErr
+      Error = "Database initialization failed"
     })
     return
   end
 
   Init.resetDatabase(db, function(success, err)
     if success then
+      -- Clear components to force reinitialization
+      components = nil
+
       msg.reply({
         Status = "Success",
         Message = "Database reset complete"
