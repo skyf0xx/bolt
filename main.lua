@@ -7,7 +7,6 @@ local DexHandlers = require('dex.dexhandlers')
 local components = {}
 
 
--- Register all message handlers - now directly using the handler functions
 Handlers.add("Initialize",
   Handlers.utils.hasMatchingTag("Action", "Initialize"),
   DexHandlers.handleInitMessage)
