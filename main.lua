@@ -1,10 +1,11 @@
+Components = Components or {}
+Db = Db or {}
+
+
 -- DEX Aggregator - Main Entry Point
 local Logger = require('dex.utils.logger')
 Logger = Logger.createLogger("Main")
 local DexHandlers = require('dex.dexhandlers')
-
--- This will store our application Components
-Components = Components or {}
 
 
 Handlers.add("Initialize",
@@ -58,8 +59,3 @@ Handlers.add("CollectData",
 Handlers.add("PollingCycle",
   Handlers.utils.hasMatchingTag("Action", "PollingCycle"),
   DexHandlers.handlePollingCycle)
-
-
-
--- Initialize handlers module with Components
-DexHandlers.init(Components)

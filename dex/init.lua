@@ -12,7 +12,6 @@ local Calculator = require('dex.swap.calculator')
 local QuoteGenerator = require('dex.swap.quote_generator')
 
 local Init = {}
-Db = Db or {}
 
 -- Setup database and schema
 function Init.setupDatabase(dbPath)

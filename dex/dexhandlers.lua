@@ -7,22 +7,8 @@ local PoolRepository = require('dex.db.pool_repository')
 local Init = require('dex.init')
 
 local DexHandlers = {}
-local components = {}
 
--- Initialize handlers with required components
-function DexHandlers.init(comps)
-  -- If components already exists, only update with new values
-  if components then
-    for k, v in pairs(comps) do
-      components[k] = v
-    end
-  else
-    components = comps
-  end
 
-  Logger.info("DexHandlers initialized")
-  return DexHandlers
-end
 
 -- Helper function to handle errors
 function DexHandlers.handleError(msg, error, code)
@@ -38,18 +24,18 @@ end
 
 -- Handler for status request
 function DexHandlers.handleStatus(msg)
-  if not components.graph or not components.graph.initialized then
+  if not Components.graph or not Components.graph.initialized then
     DexHandlers.handleError(msg, "System not fully initialized", "ERR_NOT_INITIALIZED")
     return
   end
 
-  local graphStats = components.graph.getStats()
-  local pollerStats = components.poller.getCacheStats()
+  local graphStats = Components.graph.getStats()
+  local pollerStats = Components.poller.getCacheStats()
   local dbStats = {}
 
-  if components.collector and components.collector.db then
-    local tokenStats = TokenRepository.getTokenStatistics(components.collector.db)
-    local poolStats = PoolRepository.getPoolStatistics(components.collector.db)
+  if Components.collector and Components.collector.db then
+    local tokenStats = TokenRepository.getTokenStatistics(Components.collector.db)
+    local poolStats = PoolRepository.getPoolStatistics(Components.collector.db)
 
     dbStats = {
       tokens = tokenStats,
@@ -70,14 +56,14 @@ end
 
 -- Handler for token list request
 function DexHandlers.handleTokenList(msg)
-  if not components.collector or not components.collector.db then
+  if not Components.collector or not Components.collector.db then
     DexHandlers.handleError(msg, "Database not initialized", "ERR_DB_NOT_INITIALIZED")
     return
   end
 
   local query = msg.Query or ""
 
-  local tokens = TokenRepository.searchTokens(components.collector.db, query)
+  local tokens = TokenRepository.searchTokens(Components.collector.db, query)
 
   msg.reply({
     Status = "Success",
@@ -89,7 +75,7 @@ end
 
 -- Handler for pool list request
 function DexHandlers.handlePoolList(msg)
-  if not components.collector or not components.collector.db then
+  if not Components.collector or not Components.collector.db then
     DexHandlers.handleError(msg, "Database not initialized", "ERR_DB_NOT_INITIALIZED")
     return
   end
@@ -98,9 +84,9 @@ function DexHandlers.handlePoolList(msg)
   local pools
 
   if source then
-    pools = PoolRepository.getPoolsBySource(components.collector.db, source)
+    pools = PoolRepository.getPoolsBySource(Components.collector.db, source)
   else
-    pools = PoolRepository.getPoolsWithTokenInfo(components.collector.db)
+    pools = PoolRepository.getPoolsWithTokenInfo(Components.collector.db)
   end
 
   msg.reply({
@@ -113,7 +99,7 @@ end
 
 -- Handler for quote requests
 function DexHandlers.handleQuote(msg)
-  if not components.graph or not components.graph.initialized then
+  if not Components.graph or not Components.graph.initialized then
     DexHandlers.handleError(msg, "Graph not initialized", "ERR_GRAPH_NOT_INITIALIZED")
     return
   end
@@ -139,11 +125,11 @@ function DexHandlers.handleQuote(msg)
   })
 
   -- Find the best quote
-  components.quoteGenerator.findBestQuote(
+  Components.quoteGenerator.findBestQuote(
     sourceTokenId,
     targetTokenId,
     amount,
-    components.pathFinder,
+    Components.pathFinder,
     options,
     function(quoteResults, err)
       if not quoteResults or not quoteResults.best_quote then
@@ -163,7 +149,7 @@ end
 
 -- Handler for finding paths
 function DexHandlers.handleFindPaths(msg)
-  if not components.graph or not components.graph.initialized then
+  if not Components.graph or not Components.graph.initialized then
     DexHandlers.handleError(msg, "Graph not initialized", "ERR_GRAPH_NOT_INITIALIZED")
     return
   end
@@ -177,7 +163,7 @@ function DexHandlers.handleFindPaths(msg)
   local targetTokenId = msg.TargetToken
   local maxHops = msg.MaxHops or Constants.PATH.MAX_PATH_LENGTH
 
-  local paths = components.pathFinder.findAllPaths(sourceTokenId, targetTokenId, maxHops)
+  local paths = Components.pathFinder.findAllPaths(sourceTokenId, targetTokenId, maxHops)
 
   msg.reply({
     Status = "Success",
@@ -191,7 +177,7 @@ end
 
 -- Handler for finding best route
 function DexHandlers.handleFindRoute(msg)
-  if not components.graph or not components.graph.initialized then
+  if not Components.graph or not Components.graph.initialized then
     DexHandlers.handleError(msg, "Graph not initialized", "ERR_GRAPH_NOT_INITIALIZED")
     return
   end
@@ -205,7 +191,7 @@ function DexHandlers.handleFindRoute(msg)
   local targetTokenId = msg.TargetToken
   local amount = msg.Amount
 
-  components.pathFinder.findBestRoute(sourceTokenId, targetTokenId, amount, function(result, err)
+  Components.pathFinder.findBestRoute(sourceTokenId, targetTokenId, amount, function(result, err)
     if not result then
       DexHandlers.handleError(msg, err or "No viable route found", Constants.ERROR.PATH_NOT_FOUND)
       return
@@ -223,17 +209,17 @@ function DexHandlers.handleFindRoute(msg)
 end
 
 function DexHandlers.handlePollingCycle(msg)
-  if not components.poller then
+  if not Components.poller then
     DexHandlers.handleError(msg, "Poller not initialized", "ERR_POLLER_NOT_INITIALIZED")
     return
   end
 
-  components.poller.executePollingCycle(msg)
+  Components.poller.executePollingCycle(msg)
 end
 
 -- Handler for calculating swap output
 function DexHandlers.handleCalculateOutput(msg)
-  if not components.calculator then
+  if not Components.calculator then
     DexHandlers.handleError(msg, "Calculator not initialized", "ERR_CALCULATOR_NOT_INITIALIZED")
     return
   end
@@ -247,7 +233,7 @@ function DexHandlers.handleCalculateOutput(msg)
   local tokenIn = msg.TokenIn
   local amount = msg.Amount
 
-  components.calculator.calculateSwapOutput(poolId, tokenIn, amount, function(result, err)
+  Components.calculator.calculateSwapOutput(poolId, tokenIn, amount, function(result, err)
     if not result then
       DexHandlers.handleError(msg, err or "Calculation failed", Constants.ERROR.CALCULATION_FAILED)
       return
@@ -262,7 +248,7 @@ end
 
 -- Handler for finding arbitrage opportunities
 function DexHandlers.handleFindArbitrage(msg)
-  if not components.pathFinder then
+  if not Components.pathFinder then
     DexHandlers.handleError(msg, "PathFinder not initialized", "ERR_PATHFINDER_NOT_INITIALIZED")
     return
   end
@@ -270,7 +256,7 @@ function DexHandlers.handleFindArbitrage(msg)
   local startTokenId = msg.StartToken or Constants.PATH.DEFAULT_ARBITRAGE_TOKEN
   local inputAmount = msg.Amount or Constants.NUMERIC.DEFAULT_SWAP_INPUT
 
-  components.pathFinder.findArbitrageOpportunities(startTokenId, inputAmount, function(result, err)
+  Components.pathFinder.findArbitrageOpportunities(startTokenId, inputAmount, function(result, err)
     if err then
       msg.reply({
         Status = "Partial",
@@ -292,7 +278,7 @@ end
 
 -- Handler for refreshing reserves
 function DexHandlers.handleRefreshReserves(msg)
-  if not components.poller then
+  if not Components.poller then
     DexHandlers.handleError(msg, "Poller not initialized", "ERR_POLLER_NOT_INITIALIZED")
     return
   end
@@ -302,7 +288,7 @@ function DexHandlers.handleRefreshReserves(msg)
 
   if poolIds and #poolIds > 0 then
     -- Refresh specific pools
-    components.poller.pollMultiplePools(poolIds, forceFresh, function(results)
+    Components.poller.pollMultiplePools(poolIds, forceFresh, function(results)
       msg.reply({
         Status = "Success",
         Refreshed = Utils.tableSize(results.reserves),
@@ -315,7 +301,7 @@ function DexHandlers.handleRefreshReserves(msg)
     local maxAge = msg.MaxAge or Constants.TIME.RESERVE_CACHE_EXPIRY
     local batchSize = msg.BatchSize or Constants.OPTIMIZATION.BATCH_SIZE
 
-    components.poller.refreshStaleReserves(maxAge, batchSize, function(result)
+    Components.poller.refreshStaleReserves(maxAge, batchSize, function(result)
       msg.reply({
         Status = "Success",
         Refreshed = result.refreshed,
@@ -328,7 +314,7 @@ end
 
 -- Handler for data collection
 function DexHandlers.handleCollectData(msg)
-  if not components.collector then
+  if not Components.collector then
     DexHandlers.handleError(msg, "Collector not initialized", "ERR_COLLECTOR_NOT_INITIALIZED")
     return
   end
@@ -341,10 +327,10 @@ function DexHandlers.handleCollectData(msg)
     return
   end
 
-  components.collector.collectFromDex(source, poolAddresses, function(results)
+  Components.collector.collectFromDex(source, poolAddresses, function(results)
     -- Save to database if requested
-    if msg.SaveToDb and components.collector.db then
-      components.collector.saveToDatabase(results, function(success, err)
+    if msg.SaveToDb and Components.collector.db then
+      Components.collector.saveToDatabase(results, function(success, err)
         if not success then
           msg.reply({
             Status = "Partial",
@@ -358,8 +344,8 @@ function DexHandlers.handleCollectData(msg)
         end
 
         -- Rebuild graph if requested
-        if msg.RebuildGraph and components.graph then
-          Init.buildGraph(components, function(success, err)
+        if msg.RebuildGraph and Components.graph then
+          Init.buildGraph(Components, function(success, err)
             if not success then
               msg.reply({
                 Status = "Partial",
