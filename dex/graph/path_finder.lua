@@ -1,6 +1,7 @@
-local Constants = require('utils.constants')
-local Logger = require('dex.logger').createLogger("PathFinder")
-local Utils = require('dex.utils')
+local Constants = require('dex.utils.constants')
+local Logger = require('dex.utils.logger')
+Logger = Logger.createLogger("PathFinder")
+local Utils = require('dex.utils.utils')
 local BigDecimal = require('dex.utils.big_decimal')
 local Collector = require('dex.collectors.collector')
 

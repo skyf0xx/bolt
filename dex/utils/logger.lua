@@ -1,5 +1,5 @@
-local Constants = require('utils.constants')
-local Utils = require('dex.utils')
+local Constants = require('dex.utils.constants')
+local Utils = require('dex.utils.utils')
 
 local Logger = {}
 

@@ -1,7 +1,9 @@
 local BigDecimal = require('dex.utils.big_decimal')
-local Constants = require('utils.constants')
-local Logger = require('dex.logger').createLogger("QuoteGenerator")
-local Utils = require('dex.utils')
+local Constants = require('dex.utils.constants')
+local Logger = require('dex.utils.logger')
+Logger = Logger.createLogger("QuoteGenerator")
+
+local Utils = require('dex.utils.utils')
 local Calculator = require('dex.swap.calculator')
 local TokenRepository = require('dex.db.token_repository')
 local PoolRepository = require('dex.db.pool_repository')

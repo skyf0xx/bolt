@@ -1,6 +1,7 @@
-local Constants = require('utils.constants')
-local Logger = require('dex.logger').createLogger("Graph")
-local Utils = require('dex.utils')
+local Constants = require('dex.utils.constants')
+local Logger = require('dex.utils.logger')
+Logger = Logger.createLogger("Graph")
+local Utils = require('dex.utils.utils')
 
 local Graph = {}
 
