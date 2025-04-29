@@ -1,5 +1,5 @@
 local BigDecimal = require('dex.utils.big_decimal')
-local Constants = require('dex.constants')
+local Constants = require('utils.constants')
 local Logger = require('dex.logger').createLogger("QuoteGenerator")
 local Utils = require('dex.utils')
 local Calculator = require('dex.swap.calculator')
