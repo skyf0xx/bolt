@@ -234,6 +234,7 @@ function Init.handleResetMessage(msg)
   Init.resetDatabase(db, function(success, err)
     if success then
       -- Clear components to force reinitialization
+      Db = db
       Components = nil
 
       msg.reply({
