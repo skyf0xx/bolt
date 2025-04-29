@@ -12,6 +12,7 @@ local Calculator = require('dex.swap.calculator')
 local QuoteGenerator = require('dex.swap.quote_generator')
 
 local Init = {}
+Db = Db or {}
 
 -- Setup database and schema
 function Init.setupDatabase(dbPath)
@@ -66,7 +67,7 @@ function Init.setupComponents(db, existingComponents)
 
   -- Initialize quote generator with existing calculator if available
   existingComponents.quoteGenerator = existingComponents.quoteGenerator or
-  QuoteGenerator.init(db, existingComponents.calculator)
+      QuoteGenerator.init(db, existingComponents.calculator)
 
   -- Reuse existing graph or create a new one
   existingComponents.graph = existingComponents.graph or Graph.new()
@@ -80,7 +81,7 @@ end
 -- Collect initial data and build graph
 function Init.collectInitialData(components, callback)
   local collector = components.collector
-  local graph = components.graph
+
 
   -- Get configured pools
   local pools = Init.getConfiguredPools()
@@ -139,17 +140,17 @@ function Init.initialize(dbPath, callback)
   Logger.info("Starting DEX Aggregator initialization")
 
   -- Setup database (reusing existing connection if available)
-  db = db or Init.setupDatabase(dbPath)
-  if not db then
+  Db = Init.setupDatabase(dbPath)
+  if not Db then
     callback(false, "Database initialization failed")
     return
   end
 
   -- Setup components (preserving existing components)
-  components = components or {}
-  components = Init.setupComponents(db, components)
+  Components = Components or {}
+  Components = Init.setupComponents(Db, Components)
 
-  callback(true, { graph = components.graph })
+  callback(true, { graph = Components.graph })
 end
 
 -- Handle incoming initialization message
@@ -162,16 +163,16 @@ function Init.handleInitMessage(msg)
   local forceReinit = msg.ForceReinit == true
 
   -- If we already have components and aren't forcing reinit, just report status
-  if components and components.graph and components.graph.initialized and not forceReinit then
+  if Components and Components.graph and Components.graph.initialized and not forceReinit then
     Logger.info("Using existing initialized components")
     msg.reply({
       Status = "Success",
       Components = "Reused",
       IsReused = true,
       Graph = {
-        Tokens = components.graph.tokenCount,
-        Pools = components.graph.edgeCount,
-        Sources = components.graph.sources
+        Tokens = Components.graph.tokenCount,
+        Pools = Components.graph.edgeCount,
+        Sources = Components.graph.sources
       }
     })
     return
@@ -234,7 +235,7 @@ function Init.handleResetMessage(msg)
   Init.resetDatabase(db, function(success, err)
     if success then
       -- Clear components to force reinitialization
-      components = nil
+      Components = nil
 
       msg.reply({
         Status = "Success",

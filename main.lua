@@ -3,8 +3,8 @@ local Logger = require('dex.utils.logger')
 Logger = Logger.createLogger("Main")
 local DexHandlers = require('dex.dexhandlers')
 
--- This will store our application components
-components = components or {}
+-- This will store our application Components
+Components = Components or {}
 
 
 Handlers.add("Initialize",
@@ -61,5 +61,5 @@ Handlers.add("PollingCycle",
 
 
 
--- Initialize handlers module with components
-DexHandlers.init(components)
+-- Initialize handlers module with Components
+DexHandlers.init(Components)

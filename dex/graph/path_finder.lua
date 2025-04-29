@@ -332,7 +332,7 @@ function PathFinder.findBestRoute(sourceTokenId, targetTokenId, inputAmount, cal
               callback(poolResults[1])
             else
               -- If all direct paths failed, try multi-hop
-              findMultiHopRoute()
+              FindMultiHopRoute()
             end
           end
         end)
@@ -358,17 +358,17 @@ function PathFinder.findBestRoute(sourceTokenId, targetTokenId, inputAmount, cal
           })
         else
           -- If direct path failed, try multi-hop
-          findMultiHopRoute()
+          FindMultiHopRoute()
         end
       end)
     end
   else
     -- No direct connection, try multi-hop paths
-    findMultiHopRoute()
+    FindMultiHopRoute()
   end
 
   -- Function to find multi-hop route
-  function findMultiHopRoute()
+  function FindMultiHopRoute()
     Logger.info("Looking for multi-hop routes")
 
     -- Find the optimal path (this handles multiple hops)
