@@ -1,23 +1,23 @@
 local Constants = require('dex.utils.constants')
 local Logger = require('dex.utils.logger')
-Logger = Logger.createLogger("Handlers")
+Logger = Logger.createLogger("DexHandlers")
 local Utils = require('dex.utils.utils')
 local TokenRepository = require('dex.db.token_repository')
 local PoolRepository = require('dex.db.pool_repository')
 local Init = require('dex.init')
 
-local Handlers = {}
+local DexHandlers = {}
 local components = {}
 
 -- Initialize handlers with required components
-function Handlers.init(comps)
+function DexHandlers.init(comps)
   components = comps
-  Logger.info("Handlers initialized")
-  return Handlers
+  Logger.info("DexHandlers initialized")
+  return DexHandlers
 end
 
 -- Helper function to handle errors
-function Handlers.handleError(msg, error, code)
+function DexHandlers.handleError(msg, error, code)
   local errorCode = code or Constants.ERROR.UNKNOWN_ERROR
   Logger.error("Error in handler", { error = error, code = errorCode })
 
@@ -29,9 +29,9 @@ function Handlers.handleError(msg, error, code)
 end
 
 -- Handler for status request
-function Handlers.handleStatus(msg)
+function DexHandlers.handleStatus(msg)
   if not components.graph or not components.graph.initialized then
-    Handlers.handleError(msg, "System not fully initialized", "ERR_NOT_INITIALIZED")
+    DexHandlers.handleError(msg, "System not fully initialized", "ERR_NOT_INITIALIZED")
     return
   end
 
@@ -61,9 +61,9 @@ function Handlers.handleStatus(msg)
 end
 
 -- Handler for token list request
-function Handlers.handleTokenList(msg)
+function DexHandlers.handleTokenList(msg)
   if not components.collector or not components.collector.db then
-    Handlers.handleError(msg, "Database not initialized", "ERR_DB_NOT_INITIALIZED")
+    DexHandlers.handleError(msg, "Database not initialized", "ERR_DB_NOT_INITIALIZED")
     return
   end
 
@@ -80,9 +80,9 @@ function Handlers.handleTokenList(msg)
 end
 
 -- Handler for pool list request
-function Handlers.handlePoolList(msg)
+function DexHandlers.handlePoolList(msg)
   if not components.collector or not components.collector.db then
-    Handlers.handleError(msg, "Database not initialized", "ERR_DB_NOT_INITIALIZED")
+    DexHandlers.handleError(msg, "Database not initialized", "ERR_DB_NOT_INITIALIZED")
     return
   end
 
@@ -104,15 +104,15 @@ function Handlers.handlePoolList(msg)
 end
 
 -- Handler for quote requests
-function Handlers.handleQuote(msg)
+function DexHandlers.handleQuote(msg)
   if not components.graph or not components.graph.initialized then
-    Handlers.handleError(msg, "Graph not initialized", "ERR_GRAPH_NOT_INITIALIZED")
+    DexHandlers.handleError(msg, "Graph not initialized", "ERR_GRAPH_NOT_INITIALIZED")
     return
   end
 
   -- Validate request
   if not msg.SourceToken or not msg.TargetToken or not msg.Amount then
-    Handlers.handleError(msg, "Missing required parameters: SourceToken, TargetToken, Amount", "ERR_INVALID_PARAMS")
+    DexHandlers.handleError(msg, "Missing required parameters: SourceToken, TargetToken, Amount", "ERR_INVALID_PARAMS")
     return
   end
 
@@ -139,7 +139,7 @@ function Handlers.handleQuote(msg)
     options,
     function(quoteResults, err)
       if not quoteResults or not quoteResults.best_quote then
-        Handlers.handleError(msg, err or "No viable path found", Constants.ERROR.PATH_NOT_FOUND)
+        DexHandlers.handleError(msg, err or "No viable path found", Constants.ERROR.PATH_NOT_FOUND)
         return
       end
 
@@ -154,14 +154,14 @@ function Handlers.handleQuote(msg)
 end
 
 -- Handler for finding paths
-function Handlers.handleFindPaths(msg)
+function DexHandlers.handleFindPaths(msg)
   if not components.graph or not components.graph.initialized then
-    Handlers.handleError(msg, "Graph not initialized", "ERR_GRAPH_NOT_INITIALIZED")
+    DexHandlers.handleError(msg, "Graph not initialized", "ERR_GRAPH_NOT_INITIALIZED")
     return
   end
 
   if not msg.SourceToken or not msg.TargetToken then
-    Handlers.handleError(msg, "Missing required parameters: SourceToken, TargetToken", "ERR_INVALID_PARAMS")
+    DexHandlers.handleError(msg, "Missing required parameters: SourceToken, TargetToken", "ERR_INVALID_PARAMS")
     return
   end
 
@@ -182,14 +182,14 @@ function Handlers.handleFindPaths(msg)
 end
 
 -- Handler for finding best route
-function Handlers.handleFindRoute(msg)
+function DexHandlers.handleFindRoute(msg)
   if not components.graph or not components.graph.initialized then
-    Handlers.handleError(msg, "Graph not initialized", "ERR_GRAPH_NOT_INITIALIZED")
+    DexHandlers.handleError(msg, "Graph not initialized", "ERR_GRAPH_NOT_INITIALIZED")
     return
   end
 
   if not msg.SourceToken or not msg.TargetToken or not msg.Amount then
-    Handlers.handleError(msg, "Missing required parameters: SourceToken, TargetToken, Amount", "ERR_INVALID_PARAMS")
+    DexHandlers.handleError(msg, "Missing required parameters: SourceToken, TargetToken, Amount", "ERR_INVALID_PARAMS")
     return
   end
 
@@ -199,7 +199,7 @@ function Handlers.handleFindRoute(msg)
 
   components.pathFinder.findBestRoute(sourceTokenId, targetTokenId, amount, function(result, err)
     if not result then
-      Handlers.handleError(msg, err or "No viable route found", Constants.ERROR.PATH_NOT_FOUND)
+      DexHandlers.handleError(msg, err or "No viable route found", Constants.ERROR.PATH_NOT_FOUND)
       return
     end
 
@@ -214,9 +214,9 @@ function Handlers.handleFindRoute(msg)
   end)
 end
 
-function Handlers.handlePollingCycle(msg)
+function DexHandlers.handlePollingCycle(msg)
   if not components.poller then
-    Handlers.handleError(msg, "Poller not initialized", "ERR_POLLER_NOT_INITIALIZED")
+    DexHandlers.handleError(msg, "Poller not initialized", "ERR_POLLER_NOT_INITIALIZED")
     return
   end
 
@@ -224,14 +224,14 @@ function Handlers.handlePollingCycle(msg)
 end
 
 -- Handler for calculating swap output
-function Handlers.handleCalculateOutput(msg)
+function DexHandlers.handleCalculateOutput(msg)
   if not components.calculator then
-    Handlers.handleError(msg, "Calculator not initialized", "ERR_CALCULATOR_NOT_INITIALIZED")
+    DexHandlers.handleError(msg, "Calculator not initialized", "ERR_CALCULATOR_NOT_INITIALIZED")
     return
   end
 
   if not msg.PoolId or not msg.TokenIn or not msg.Amount then
-    Handlers.handleError(msg, "Missing required parameters: PoolId, TokenIn, Amount", "ERR_INVALID_PARAMS")
+    DexHandlers.handleError(msg, "Missing required parameters: PoolId, TokenIn, Amount", "ERR_INVALID_PARAMS")
     return
   end
 
@@ -241,7 +241,7 @@ function Handlers.handleCalculateOutput(msg)
 
   components.calculator.calculateSwapOutput(poolId, tokenIn, amount, function(result, err)
     if not result then
-      Handlers.handleError(msg, err or "Calculation failed", Constants.ERROR.CALCULATION_FAILED)
+      DexHandlers.handleError(msg, err or "Calculation failed", Constants.ERROR.CALCULATION_FAILED)
       return
     end
 
@@ -253,9 +253,9 @@ function Handlers.handleCalculateOutput(msg)
 end
 
 -- Handler for finding arbitrage opportunities
-function Handlers.handleFindArbitrage(msg)
+function DexHandlers.handleFindArbitrage(msg)
   if not components.pathFinder then
-    Handlers.handleError(msg, "PathFinder not initialized", "ERR_PATHFINDER_NOT_INITIALIZED")
+    DexHandlers.handleError(msg, "PathFinder not initialized", "ERR_PATHFINDER_NOT_INITIALIZED")
     return
   end
 
@@ -283,9 +283,9 @@ function Handlers.handleFindArbitrage(msg)
 end
 
 -- Handler for refreshing reserves
-function Handlers.handleRefreshReserves(msg)
+function DexHandlers.handleRefreshReserves(msg)
   if not components.poller then
-    Handlers.handleError(msg, "Poller not initialized", "ERR_POLLER_NOT_INITIALIZED")
+    DexHandlers.handleError(msg, "Poller not initialized", "ERR_POLLER_NOT_INITIALIZED")
     return
   end
 
@@ -319,9 +319,9 @@ function Handlers.handleRefreshReserves(msg)
 end
 
 -- Handler for data collection
-function Handlers.handleCollectData(msg)
+function DexHandlers.handleCollectData(msg)
   if not components.collector then
-    Handlers.handleError(msg, "Collector not initialized", "ERR_COLLECTOR_NOT_INITIALIZED")
+    DexHandlers.handleError(msg, "Collector not initialized", "ERR_COLLECTOR_NOT_INITIALIZED")
     return
   end
 
@@ -329,7 +329,7 @@ function Handlers.handleCollectData(msg)
   local poolAddresses = msg.PoolAddresses
 
   if not source or not poolAddresses or #poolAddresses == 0 then
-    Handlers.handleError(msg, "Missing required parameters: Source, PoolAddresses", "ERR_INVALID_PARAMS")
+    DexHandlers.handleError(msg, "Missing required parameters: Source, PoolAddresses", "ERR_INVALID_PARAMS")
     return
   end
 
@@ -397,7 +397,7 @@ end
 -- and just exporting the individual handler functions
 
 -- These are the initialization handlers
-Handlers.handleInitMessage = Init.handleInitMessage
-Handlers.handleResetMessage = Init.handleResetMessage
+DexHandlers.handleInitMessage = Init.handleInitMessage
+DexHandlers.handleResetMessage = Init.handleResetMessage
 
-return Handlers
+return DexHandlers
