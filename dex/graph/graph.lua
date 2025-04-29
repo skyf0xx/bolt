@@ -7,17 +7,22 @@ local Graph = {}
 
 -- Create a new Graph instance
 function Graph.new()
-  local instance = {
-    nodes = {},     -- Map of token_id -> token data
-    edges = {},     -- Map of token_id -> list of connections (pools)
-    sources = {},   -- Track available sources (DEXes)
-    poolsById = {}, -- Quick lookup of pools by ID
-    initialized = false,
-    tokenCount = 0,
-    edgeCount = 0
-  }
+  local instance = Graph.instance or {}
 
-  setmetatable(instance, { __index = Graph })
+  instance.nodes = instance.nodes or {}         -- Map of token_id -> token data
+  instance.edges = instance.edges or {}         -- Map of token_id -> list of connections (pools)
+  instance.sources = instance.sources or {}     -- Track available sources (DEXes)
+  instance.poolsById = instance.poolsById or {} -- Quick lookup of pools by ID
+  instance.initialized = instance.initialized or false
+  instance.tokenCount = instance.tokenCount or 0
+  instance.edgeCount = instance.edgeCount or 0
+
+  Graph.instance = instance
+
+  if not getmetatable(instance) then
+    setmetatable(instance, { __index = Graph })
+  end
+
   return instance
 end
 

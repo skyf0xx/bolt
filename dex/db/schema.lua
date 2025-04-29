@@ -7,6 +7,12 @@ local Schema = {}
 
 -- Initialize database
 function Schema.init(dbPath)
+  -- Check if we already have a valid db connection
+  if Schema.db and pcall(function() return Schema.db:exec("SELECT 1") == sqlite3.OK end) then
+    Logger.info("Reusing existing database connection")
+    return Schema.db
+  end
+
   local db
 
   if not dbPath or dbPath == ":memory:" then
@@ -23,6 +29,8 @@ function Schema.init(dbPath)
     return nil, "Failed to open database"
   end
 
+  -- Store the db connection in the Schema module
+  Schema.db = db
   return db
 end
 
@@ -222,6 +230,7 @@ end
 function Schema.close(db)
   if db then
     db:close()
+    Schema.db = nil -- Clear the stored connection
     Logger.info("Database connection closed")
     return true
   end

@@ -12,9 +12,9 @@ local Poller = {}
 -- Initialize the poller with cache and database
 function Poller.init(db)
   Poller.db = db
-  Poller.cache = Cache.init()
-  Poller.inProgressPolls = {}
-  Poller.isRefreshing = false
+  Poller.cache = Poller.cache or Cache.init()
+  Poller.inProgressPolls = Poller.inProgressPolls or {}
+  Poller.isRefreshing = Poller.isRefreshing or false
   Logger.info("Reserve poller initialized")
   return Poller
 end

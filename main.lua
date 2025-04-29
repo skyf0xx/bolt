@@ -4,7 +4,7 @@ Logger = Logger.createLogger("Main")
 local DexHandlers = require('dex.dexhandlers')
 
 -- This will store our application components
-local components = {}
+components = components or {}
 
 
 Handlers.add("Initialize",
