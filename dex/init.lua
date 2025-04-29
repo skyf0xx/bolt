@@ -1,4 +1,4 @@
-local Constants = require('dex.constants')
+local Constants = require('utils.constants')
 local Logger = require('dex.logger').createLogger("Init")
 local Utils = require('dex.utils')
 local Schema = require('dex.db.schema')

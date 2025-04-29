@@ -1,5 +1,5 @@
 local BigDecimal = require('dex.utils.big_decimal')
-local Constants = require('dex.constants')
+local Constants = require('utils.constants')
 local Logger = require('dex.logger').createLogger("PermaswapFormula")
 local Utils = require('dex.utils')
 

@@ -1,4 +1,4 @@
-local Constants = require('dex.constants')
+local Constants = require('utils.constants')
 local Logger = require('dex.logger').createLogger("GraphBuilder")
 local Utils = require('dex.utils')
 local Graph = require('dex.graph.graph')

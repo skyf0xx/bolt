@@ -1,5 +1,5 @@
 local Utils = {}
-local Constants = require('dex.constants')
+local Constants = require('utils.constants')
 local json = require('json')
 
 -- String manipulation utilities

@@ -1,4 +1,4 @@
-local Constants = require('dex.constants')
+local Constants = require('utils.constants')
 local Logger = require('dex.logger').createLogger("Collector")
 local Utils = require('dex.utils')
 local Permaswap = require('dex.collectors.permaswap')

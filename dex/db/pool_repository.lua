@@ -1,5 +1,5 @@
 local sqlite3 = require('lsqlite3')
-local Constants = require('dex.constants')
+local Constants = require('utils.constants')
 local Logger = require('dex.logger').createLogger("PoolRepository")
 local Utils = require('dex.utils')
 local TokenRepository = require('dex.db.token_repository')
