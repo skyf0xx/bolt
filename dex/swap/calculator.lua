@@ -206,10 +206,10 @@ function Calculator.calculateRequiredInput(poolId, tokenOut, desiredOutput, call
 
     local inputAmount
     if pool.source == Constants.SOURCE.PERMASWAP then
-      inputAmount = PermaswapFormula.getInputAmount(desiredOutput, reserveIn, reserveOut, pool.fee_bps)
+      inputAmount = PermaswapFormula.getInputAmount(desiredOutput, reserveIn, reserveOut, pool.fee_bps) or 0
     elseif pool.source == Constants.SOURCE.BOTEGA then
       local feePercentage = pool.fee_bps / 100
-      inputAmount = BotegaFormula.getInputAmount(desiredOutput, reserveIn, reserveOut, feePercentage)
+      inputAmount = BotegaFormula.getInputAmount(desiredOutput, reserveIn, reserveOut, feePercentage) or 0
     else
       callback(nil, "Unsupported pool source: " .. tostring(pool.source))
       return

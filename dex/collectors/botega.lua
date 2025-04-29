@@ -189,7 +189,7 @@ function Botega.normalizePoolData(poolAddress, poolInfo, pairInfo, feeInfo)
   -- Convert fee from percentage to basis points
   local feeBps = 0
   if poolInfo.FeeBps then
-    feeBps = tonumber(poolInfo.FeeBps)
+    feeBps = tonumber(poolInfo.FeeBps) or feeBps
   elseif feeInfo and feeInfo.totalFeePercentage then
     feeBps = math.floor(feeInfo.totalFeePercentage * 100) -- Convert percentage to basis points
   end

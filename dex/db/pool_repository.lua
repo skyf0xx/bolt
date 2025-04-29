@@ -692,6 +692,7 @@ function PoolRepository.getPoolStatistics(db)
     return stats
   end
 
+  stats = stats or {}
   stats.sources = {}
   while sourceStmt:step() == sqlite3.ROW do
     stats.sources[sourceStmt:column_text(0)] = sourceStmt:column_int(1)

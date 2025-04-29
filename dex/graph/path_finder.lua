@@ -247,7 +247,7 @@ function PathFinder.findArbitrageOpportunities(startTokenId, inputAmount, callba
         local profitBps = math.floor(tonumber(BigDecimal.divide(
           BigDecimal.multiply(profitAmount, BigDecimal.new(Constants.NUMERIC.BASIS_POINTS_MULTIPLIER)),
           BigDecimal.new(inputAmount)
-        ).value))
+        ).value) or 0)
 
         -- If profitable (considering gas costs), add to opportunities
         if profitBps > Constants.NUMERIC.DEFAULT_MIN_PROFIT_BPS then
