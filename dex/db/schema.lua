@@ -1,6 +1,7 @@
 local sqlite3 = require('lsqlite3')
-local Constants = require('utils.constants')
-local Logger = require('utils.logger').createLogger("Schema")
+local Constants = require('dex.utils.constants')
+local Logger = require('dex.utils.logger')
+Logger = Logger.createLogger("Schema")
 
 local Schema = {}
 

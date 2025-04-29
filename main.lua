@@ -1,6 +1,7 @@
 -- DEX Aggregator - Main Entry Point
-local Constants = require('utils.constants')
-local Logger = require('dex.logger').createLogger("Main")
+local Constants = require('dex.utils.constants')
+local Logger = require('dex.utils.logger')
+Logger = Logger.createLogger("Main")
 local Handlers = require('dex.handlers')
 local Init = require('dex.init')
 local Schema = require('dex.db.schema')

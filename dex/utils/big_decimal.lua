@@ -1,5 +1,5 @@
-local bint = require('bint')(256) -- Using the bint library for arbitrary precision
-local Constants = require('utils.constants')
+local bint = require('.bint')(256) -- Using the bint library for arbitrary precision
+local Constants = require('dex.utils.constants')
 
 local BigDecimal = {}
 

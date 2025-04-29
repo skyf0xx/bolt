@@ -1,7 +1,7 @@
 local sqlite3 = require('lsqlite3')
-local Constants = require('utils.constants')
-local Logger = require('dex.logger').createLogger("TokenRepository")
-local Utils = require('dex.utils')
+local Constants = require('dex.utils.constants')
+local Logger = require('dex.utils.logger')
+Logger = Logger.createLogger("TokenRepository")
 
 local TokenRepository = {}
 
