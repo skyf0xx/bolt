@@ -224,11 +224,5 @@ function Init.handleResetMessage(msg)
   end)
 end
 
--- Register message handlers
-function Init.registerHandlers()
-  Init.handleInitMessage()
-  Init.handleResetMessage()
-end
-
 -- Export initialization functions
 return Init
