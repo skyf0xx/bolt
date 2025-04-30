@@ -387,9 +387,6 @@ function DexHandlers.handleCollectData(msg)
   end)
 end
 
--- Note: we're removing the handleRequest method that had the switch-case
--- and just exporting the individual handler functions
-
 -- These are the initialization handlers
 DexHandlers.handleInitMessage = Init.handleInitMessage
 DexHandlers.handleResetMessage = Init.handleResetMessage
