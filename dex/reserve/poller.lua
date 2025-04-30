@@ -268,9 +268,9 @@ function Poller.executePollingCycle(msg)
       if msg.reply then
         msg.reply({
           Status = "Success",
-          RefreshResult = result,
-          Timestamp = os.time(),
-          NextPollDue = os.time() + maxAge
+          RefreshResult = Utils.jsonEncode(result),
+          Timestamp = tostring(os.time()),
+          NextPollDue = tostring(os.time() + maxAge)
         })
       end
     end
