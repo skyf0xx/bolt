@@ -10,6 +10,7 @@ local PathFinder = require('dex.graph.path_finder')
 local Poller = require('dex.reserve.poller')
 local Calculator = require('dex.swap.calculator')
 local QuoteGenerator = require('dex.swap.quote_generator')
+local Utils = require('dex.utils.utils')
 
 local Init = {}
 
@@ -167,12 +168,12 @@ function Init.handleInitMessage(msg)
     msg.reply({
       Status = "Success",
       Components = "Reused",
-      IsReused = true,
-      Graph = {
+      IsReused = 'true',
+      Graph = Utils.jsonEncode({
         Tokens = Components.graph.tokenCount,
         Pools = Components.graph.edgeCount,
         Sources = Components.graph.sources
-      }
+      })
     })
     return
   end
@@ -182,17 +183,17 @@ function Init.handleInitMessage(msg)
       msg.reply({
         Status = "Success",
         Components = "Initialized",
-        IsReused = false,
-        Graph = {
+        IsReused = 'false',
+        Graph = Utils.jsonEncode({
           Tokens = result.graph.tokenCount,
           Pools = result.graph.edgeCount,
           Sources = result.graph.sources
-        }
+        })
       })
     else
       msg.reply({
         Status = "Error",
-        Error = result
+        Error = Utils.jsonEncode(result)
       })
     end
   end)
@@ -244,7 +245,7 @@ function Init.handleResetMessage(msg)
     else
       msg.reply({
         Status = "Error",
-        Error = err
+        Error = Utils.jsonEncode(err)
       })
     end
   end)

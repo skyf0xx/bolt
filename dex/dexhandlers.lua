@@ -17,8 +17,8 @@ function DexHandlers.handleError(msg, error, code)
 
   msg.reply({
     Status = "Error",
-    Error = error,
-    Code = errorCode
+    Error = tostring(error),
+    Code = tostring(errorCode)
   })
 end
 
@@ -47,10 +47,10 @@ function DexHandlers.handleStatus(msg)
     Status = "Success",
     Version = Constants.VERSION,
     AppName = Constants.APP_NAME,
-    Graph = graphStats,
-    Cache = pollerStats,
-    Database = dbStats,
-    Timestamp = os.time()
+    Graph = Utils.jsonEncode(graphStats),
+    Cache = Utils.jsonEncode(pollerStats),
+    Database = Utils.jsonEncode(dbStats),
+    Timestamp = tostring(os.time())
   })
 end
 
@@ -67,8 +67,8 @@ function DexHandlers.handleTokenList(msg)
 
   msg.reply({
     Status = "Success",
-    Tokens = tokens,
-    Count = #tokens,
+    Tokens = Utils.jsonEncode(tokens),
+    Count = tostring(#tokens),
     Query = query
   })
 end
@@ -91,8 +91,8 @@ function DexHandlers.handlePoolList(msg)
 
   msg.reply({
     Status = "Success",
-    Pools = pools,
-    Count = #pools,
+    Pools = Utils.jsonEncode(pools),
+    Count = tostring(#pools),
     Source = source or "all"
   })
 end
@@ -139,9 +139,9 @@ function DexHandlers.handleQuote(msg)
 
       msg.reply({
         Status = "Success",
-        Quote = quoteResults.best_quote,
-        AlternativeQuotes = quoteResults.quotes,
-        QuoteCount = quoteResults.quote_count
+        Quote = tostring(quoteResults.best_quote),
+        AlternativeQuotes = Utils.jsonEncode(quoteResults.quotes),
+        QuoteCount = tostring(quoteResults.quote_count)
       })
     end
   )
@@ -167,11 +167,11 @@ function DexHandlers.handleFindPaths(msg)
 
   msg.reply({
     Status = "Success",
-    Paths = paths,
-    Count = #paths,
+    Paths = Utils.jsonEncode(paths),
+    Count = tostring(#paths),
     SourceToken = sourceTokenId,
     TargetToken = targetTokenId,
-    MaxHops = maxHops
+    MaxHops = tostring(maxHops)
   })
 end
 
@@ -199,11 +199,11 @@ function DexHandlers.handleFindRoute(msg)
 
     msg.reply({
       Status = "Success",
-      Route = result,
+      Route = Utils.jsonEncode(result),
       SourceToken = sourceTokenId,
       TargetToken = targetTokenId,
-      InputAmount = amount,
-      OutputAmount = result.outputAmount
+      InputAmount = tostring(amount),
+      OutputAmount = tostring(result.outputAmount)
     })
   end)
 end
@@ -241,7 +241,7 @@ function DexHandlers.handleCalculateOutput(msg)
 
     msg.reply({
       Status = "Success",
-      Result = result
+      Result = Utils.jsonEncode(result)
     })
   end)
 end
@@ -260,16 +260,16 @@ function DexHandlers.handleFindArbitrage(msg)
     if err then
       msg.reply({
         Status = "Partial",
-        Error = err,
-        Opportunities = result.opportunities or {}
+        Error = tostring(err),
+        Opportunities = Utils.jsonEncode(result.opportunities or {})
       })
       return
     end
 
     msg.reply({
       Status = "Success",
-      Opportunities = result.opportunities,
-      Count = #(result.opportunities),
+      Opportunities = Utils.jsonEncode(result.opportunities),
+      Count = tostring(#(result.opportunities)),
       StartToken = startTokenId,
       InputAmount = inputAmount
     })
@@ -291,9 +291,9 @@ function DexHandlers.handleRefreshReserves(msg)
     Components.poller.pollMultiplePools(poolIds, forceFresh, function(results)
       msg.reply({
         Status = "Success",
-        Refreshed = Utils.tableSize(results.reserves),
-        Failed = Utils.tableSize(results.errors),
-        Errors = results.errors
+        Refreshed = tostring(Utils.tableSize(results.reserves)),
+        Failed = tostring(Utils.tableSize(results.errors)),
+        Errors = Utils.jsonEncode(results.errors)
       })
     end)
   else
@@ -304,9 +304,9 @@ function DexHandlers.handleRefreshReserves(msg)
     Components.poller.refreshStaleReserves(maxAge, batchSize, function(result)
       msg.reply({
         Status = "Success",
-        Refreshed = result.refreshed,
-        Failed = result.failed,
-        Errors = result.results and result.results.errors or {}
+        Refreshed = tostring(result.refreshed),
+        Failed = tostring(result.failed),
+        Errors = Utils.jsonEncode(result.results and result.results.errors or {})
       })
     end)
   end
@@ -334,11 +334,11 @@ function DexHandlers.handleCollectData(msg)
         if not success then
           msg.reply({
             Status = "Partial",
-            Error = "Data collected but save failed: " .. err,
-            Pools = #results.pools,
-            Tokens = #results.tokens,
-            Reserves = Utils.tableSize(results.reserves),
-            Errors = results.errors
+            Error = "Data collected but save failed: " .. tostring(err),
+            Pools = tostring(#results.pools),
+            Tokens = tostring(#results.tokens),
+            Reserves = tostring(Utils.tableSize(results.reserves)),
+            Errors = Utils.jsonEncode(results.errors)
           })
           return
         end
@@ -349,39 +349,39 @@ function DexHandlers.handleCollectData(msg)
             if not success then
               msg.reply({
                 Status = "Partial",
-                Error = "Data saved but graph rebuild failed: " .. err,
-                Pools = #results.pools,
-                Tokens = #results.tokens,
-                Reserves = Utils.tableSize(results.reserves)
+                Error = "Data saved but graph rebuild failed: " .. tostring(err),
+                Pools = tostring(#results.pools),
+                Tokens = tostring(#results.tokens),
+                Reserves = tostring(Utils.tableSize(results.reserves))
               })
               return
             end
 
             msg.reply({
               Status = "Success",
-              Pools = #results.pools,
-              Tokens = #results.tokens,
-              Reserves = Utils.tableSize(results.reserves),
-              GraphRebuilt = true
+              Pools = tostring(#results.pools),
+              Tokens = tostring(#results.tokens),
+              Reserves = tostring(Utils.tableSize(results.reserves)),
+              GraphRebuilt = "true"
             })
           end)
         else
           msg.reply({
             Status = "Success",
-            Pools = #results.pools,
-            Tokens = #results.tokens,
-            Reserves = Utils.tableSize(results.reserves),
-            Saved = true
+            Pools = tostring(#results.pools),
+            Tokens = tostring(#results.tokens),
+            Reserves = tostring(Utils.tableSize(results.reserves)),
+            Saved = "true"
           })
         end
       end)
     else
       msg.reply({
         Status = "Success",
-        Pools = #results.pools,
-        Tokens = #results.tokens,
-        Reserves = Utils.tableSize(results.reserves),
-        Errors = results.errors
+        Pools = tostring(#results.pools),
+        Tokens = tostring(#results.tokens),
+        Reserves = tostring(Utils.tableSize(results.reserves)),
+        Errors = Utils.jsonEncode(results.errors)
       })
     end
   end)
