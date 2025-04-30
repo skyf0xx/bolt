@@ -320,7 +320,7 @@ function DexHandlers.handleCollectData(msg)
   end
 
   local source = msg.Source
-  local poolAddresses = msg.PoolAddresses
+  local poolAddresses = Utils.jsonDecode(msg.PoolAddresses)
 
   if not source or not poolAddresses or #poolAddresses == 0 then
     DexHandlers.handleError(msg, "Missing required parameters: Source, PoolAddresses", "ERR_INVALID_PARAMS")
