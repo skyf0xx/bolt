@@ -10,7 +10,7 @@ local Botega = {}
 function Botega.fetchPoolInfo(poolAddress, callback)
   Logger.debug("Fetching pool info", { pool = poolAddress })
 
-  Send({
+  ao.send({
     Target = poolAddress,
     Action = Constants.API.BOTEGA.INFO
   }).onReply(function(response)
@@ -30,7 +30,7 @@ end
 function Botega.fetchPair(poolAddress, callback)
   Logger.debug("Fetching token pair", { pool = poolAddress })
 
-  Send({
+  ao.send({
     Target = poolAddress,
     Action = Constants.API.BOTEGA.GET_PAIR
   }).onReply(function(response)
@@ -53,7 +53,7 @@ end
 function Botega.fetchReserves(poolAddress, callback)
   Logger.debug("Fetching reserves", { pool = poolAddress })
 
-  Send({
+  ao.send({
     Target = poolAddress,
     Action = Constants.API.BOTEGA.GET_RESERVES
   }).onReply(function(response)
@@ -88,7 +88,7 @@ end
 function Botega.fetchFeePercentage(poolAddress, hasDiscount, callback)
   Logger.debug("Fetching fee percentage", { pool = poolAddress })
 
-  Send({
+  ao.send({
     Target = poolAddress,
     Action = Constants.API.BOTEGA.GET_FEE_PERCENTAGE,
     Tags = {
@@ -154,7 +154,7 @@ function Botega.getSwapOutput(poolAddress, tokenIn, amountIn, userAddress, callb
     amountIn = amountIn
   })
 
-  Send({
+  ao.send({
     Target = poolAddress,
     Action = Constants.API.BOTEGA.GET_SWAP_OUTPUT,
     Tags = {
@@ -371,7 +371,7 @@ function Botega.executeSwap(poolAddress, tokenIn, amountIn, minAmountOut, userAd
     request.Tags["X-Expected-Min-Output"] = tostring(minAmountOut)
   end
 
-  Send(request).onReply(function(response)
+  ao.send(request).onReply(function(response)
     if not response or response.Error then
       Logger.error("Failed to execute swap", {
         pool = poolAddress,
@@ -409,7 +409,7 @@ function Botega.getBalance(poolAddress, userAddress, callback)
     request.Tags.Recipient = userAddress
   end
 
-  Send(request).onReply(function(response)
+  ao.send(request).onReply(function(response)
     if not response or response.Error then
       Logger.error("Failed to get balance", {
         pool = poolAddress,
@@ -429,7 +429,7 @@ end
 function Botega.getTotalSupply(poolAddress, callback)
   Logger.debug("Getting total supply", { pool = poolAddress })
 
-  Send({
+  ao.send({
     Target = poolAddress,
     Action = Constants.API.BOTEGA.TOTAL_SUPPLY
   }).onReply(function(response)
@@ -452,7 +452,7 @@ end
 function Botega.registerSubscriber(poolAddress, callback)
   Logger.info("Registering as subscriber", { pool = poolAddress })
 
-  Send({
+  ao.send({
     Target = poolAddress,
     Action = "Register-Subscriber"
   }).onReply(function(response)
@@ -476,7 +476,7 @@ function Botega.subscribeToTopics(poolAddress, topics, callback)
 
   local topicsJson = Utils.jsonEncode(topics)
 
-  Send({
+  ao.send({
     Target = poolAddress,
     Action = "Subscribe-To-Topics",
     Topics = topicsJson

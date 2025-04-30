@@ -10,7 +10,7 @@ local Permaswap = {}
 function Permaswap.fetchPoolInfo(poolAddress, callback)
   Logger.debug("Fetching pool info", { pool = poolAddress })
 
-  Send({
+  ao.send({
     Target = poolAddress,
     Action = Constants.API.PERMASWAP.INFO
   }).onReply(function(response)
@@ -68,7 +68,7 @@ function Permaswap.getAmountOut(poolAddress, tokenIn, amountIn, callback)
     amountIn = amountIn
   })
 
-  Send({
+  ao.send({
     Target = poolAddress,
     Action = Constants.API.PERMASWAP.GET_AMOUNT_OUT,
     TokenIn = tokenIn,
@@ -243,7 +243,7 @@ function Permaswap.executeSwap(poolAddress, tokenIn, tokenOut, amountIn, minAmou
     request.AmountOut = tostring(minAmountOut)
   end
 
-  Send(request).onReply(function(response)
+  ao.send(request).onReply(function(response)
     if not response or response.Error then
       Logger.error("Failed to execute swap", {
         pool = poolAddress,
@@ -277,7 +277,7 @@ end
 function Permaswap.getOrderStatus(poolAddress, orderId, callback)
   Logger.debug("Getting order status", { pool = poolAddress, orderId = orderId })
 
-  Send({
+  ao.send({
     Target = poolAddress,
     Action = Constants.API.PERMASWAP.GET_ORDER,
     OrderId = orderId
@@ -320,7 +320,7 @@ function Permaswap.getBalance(poolAddress, userAddress, callback)
     request.Account = userAddress
   end
 
-  Send(request).onReply(function(response)
+  ao.send(request).onReply(function(response)
     if not response or response.Error then
       Logger.error("Failed to get balance", {
         pool = poolAddress,
