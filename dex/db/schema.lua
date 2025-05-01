@@ -6,7 +6,7 @@ Logger = Logger.createLogger("Schema")
 local Schema = {}
 
 -- Initialize database
-function Schema.init(dbPath)
+function Schema.init()
   -- Check if we already have a valid db connection
   if Schema.db and pcall(function() return Schema.db:exec("SELECT 1") == sqlite3.OK end) then
     Logger.info("Reusing existing database connection")
@@ -15,14 +15,8 @@ function Schema.init(dbPath)
 
   local db
 
-  if not dbPath or dbPath == ":memory:" then
-    Logger.info("Opening in-memory database")
-    db = sqlite3.open_memory()
-  else
-    dbPath = dbPath or Constants.DB.FILENAME
-    Logger.info("Opening database file", dbPath)
-    db = sqlite3.open(dbPath)
-  end
+  Logger.info("Opening in-memory database")
+  db = sqlite3.open_memory()
 
   if not db then
     Logger.error("Failed to open database")

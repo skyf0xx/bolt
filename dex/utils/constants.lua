@@ -12,24 +12,24 @@ Constants.SOURCE = {
 
 -- Time constants (in seconds)
 Constants.TIME = {
-  RESERVE_CACHE_EXPIRY = 120,   -- 2 minutes
-  POOL_DATA_REFRESH = 3600,     -- 1 hour
-  GRAPH_REBUILD = 3600,         -- 1 hour
-  MAX_REQUEST_TIMEOUT = 30      -- 30 seconds
+  RESERVE_CACHE_EXPIRY = 120, -- 2 minutes
+  POOL_DATA_REFRESH = 3600,   -- 1 hour
+  GRAPH_REBUILD = 3600,       -- 1 hour
+  MAX_REQUEST_TIMEOUT = 30    -- 30 seconds
 }
 
 -- Numeric constants
 Constants.NUMERIC = {
-  DECIMALS = 12,   -- Default token decimal precision
+  DECIMALS = 12, -- Default token decimal precision
   BASIS_POINTS_MULTIPLIER = 10000,
   PERCENTAGE_MULTIPLIER = 100,
-  MIN_LIQUIDITY_THRESHOLD = "1000000",    -- Minimum reserves to consider a pool active
-  DEFAULT_SLIPPAGE_TOLERANCE = 50,        -- 0.5% default slippage tolerance (in basis points)
-  DEFAULT_MIN_PROFIT_BPS = 10,            -- 0.1% minimum profit threshold (in basis points)
-  DEFAULT_MAX_HOPS = 3,                   -- Maximum number of hops in a path
-  MAX_CYCLES_TO_ANALYZE = 100,            -- Maximum number of cycles to analyze for arbitrage
-  DEFAULT_SWAP_INPUT = "1000000000000",   -- 1 token with 12 decimals
-  RESERVE_RATIO_LIMIT = 0.25              -- Max input amount as percentage of pool reserves (25%)
+  MIN_LIQUIDITY_THRESHOLD = "1000000",  -- Minimum reserves to consider a pool active
+  DEFAULT_SLIPPAGE_TOLERANCE = 50,      -- 0.5% default slippage tolerance (in basis points)
+  DEFAULT_MIN_PROFIT_BPS = 10,          -- 0.1% minimum profit threshold (in basis points)
+  DEFAULT_MAX_HOPS = 3,                 -- Maximum number of hops in a path
+  MAX_CYCLES_TO_ANALYZE = 100,          -- Maximum number of cycles to analyze for arbitrage
+  DEFAULT_SWAP_INPUT = "1000000000000", -- 1 token with 12 decimals
+  RESERVE_RATIO_LIMIT = 0.25            -- Max input amount as percentage of pool reserves (25%)
 }
 
 -- Error codes
@@ -72,7 +72,6 @@ Constants.API = {
 
 -- SQLite database constants
 Constants.DB = {
-  FILENAME = "dex_aggregator.db",
   TABLES = {
     TOKENS = "tokens",
     POOLS = "pools",
@@ -90,16 +89,16 @@ Constants.PATH = {
 
 -- Optimization constants
 Constants.OPTIMIZATION = {
-  BATCH_SIZE = 10,               -- Number of pools to update in a batch
-  MAX_CONCURRENT_REQUESTS = 5,   -- Maximum number of concurrent API requests
-  CACHE_SIZE = 100,              -- Maximum size of reserve cache (number of pools)
-  LOG_LEVEL = "INFO"             -- Default log level (DEBUG, INFO, WARN, ERROR)
+  BATCH_SIZE = 10,             -- Number of pools to update in a batch
+  MAX_CONCURRENT_REQUESTS = 5, -- Maximum number of concurrent API requests
+  CACHE_SIZE = 100,            -- Maximum size of reserve cache (number of pools)
+  LOG_LEVEL = "INFO"           -- Default log level (DEBUG, INFO, WARN, ERROR)
 }
 
 -- Subscription constants
 Constants.SUBSCRIPTION = {
-  OPPORTUNITY_NOTIFICATION_COOLDOWN = 300,   -- 5 minutes between notifications of similar opportunities
-  MAX_SUBSCRIBERS = 100                      -- Maximum number of subscribers
+  OPPORTUNITY_NOTIFICATION_COOLDOWN = 300, -- 5 minutes between notifications of similar opportunities
+  MAX_SUBSCRIBERS = 100                    -- Maximum number of subscribers
 }
 
 return Constants
