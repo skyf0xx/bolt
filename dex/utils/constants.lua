@@ -82,9 +82,9 @@ Constants.DB = {
 
 -- Path finding constants
 Constants.PATH = {
-  MAX_PATHS_TO_RETURN = 5,                                                  -- Maximum number of paths to return in results
-  MAX_PATH_LENGTH = 4,                                                      -- Maximum length of a path (including source)
-  DEFAULT_ARBITRAGE_TOKEN = "NG-0lVX882MG5nhARrSzyprEK6ejonHpdUmaaMPsHE8"   -- Default token for arbitrage cycles (qAR)
+  MAX_PATHS_TO_RETURN = 5,                                                -- Maximum number of paths to return in results
+  MAX_PATH_LENGTH = 4,                                                    -- Maximum length of a path (including source)
+  DEFAULT_ARBITRAGE_TOKEN = "xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10" -- Default token for arbitrage cycles (qAR)
 }
 
 -- Optimization constants
