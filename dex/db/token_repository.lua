@@ -1,6 +1,7 @@
 local sqlite3 = require('lsqlite3')
 local Constants = require('dex.utils.constants')
 local Logger = require('dex.utils.logger')
+local SqlAccessor = require('dex.utils.sql_accessor') -- Add this new helper
 Logger = Logger.createLogger("TokenRepository")
 
 local TokenRepository = {}
@@ -93,13 +94,13 @@ function TokenRepository.getToken(db, tokenId)
   local result = nil
   if stmt:step() == sqlite3.ROW then
     result = {
-      id = stmt:column_text(0),
-      symbol = stmt:column_text(1),
-      name = stmt:column_text(2),
-      decimals = stmt:column_int(3),
-      logo_url = stmt:column_text(4),
-      created_at = stmt:column_int(5),
-      updated_at = stmt:column_int(6)
+      id = SqlAccessor.column_text(stmt, 0),
+      symbol = SqlAccessor.column_text(stmt, 1),
+      name = SqlAccessor.column_text(stmt, 2),
+      decimals = SqlAccessor.column_int(stmt, 3),
+      logo_url = SqlAccessor.column_text(stmt, 4),
+      created_at = SqlAccessor.column_int(stmt, 5),
+      updated_at = SqlAccessor.column_int(stmt, 6)
     }
   end
 
@@ -126,13 +127,13 @@ function TokenRepository.getTokenBySymbol(db, symbol)
   local result = nil
   if stmt:step() == sqlite3.ROW then
     result = {
-      id = stmt:column_text(0),
-      symbol = stmt:column_text(1),
-      name = stmt:column_text(2),
-      decimals = stmt:column_int(3),
-      logo_url = stmt:column_text(4),
-      created_at = stmt:column_int(5),
-      updated_at = stmt:column_int(6)
+      id = SqlAccessor.column_text(stmt, 0),
+      symbol = SqlAccessor.column_text(stmt, 1),
+      name = SqlAccessor.column_text(stmt, 2),
+      decimals = SqlAccessor.column_int(stmt, 3),
+      logo_url = SqlAccessor.column_text(stmt, 4),
+      created_at = SqlAccessor.column_int(stmt, 5),
+      updated_at = SqlAccessor.column_int(stmt, 6)
     }
   end
 
@@ -153,13 +154,13 @@ function TokenRepository.getAllTokens(db)
   local tokens = {}
   while stmt:step() == sqlite3.ROW do
     table.insert(tokens, {
-      id = stmt:column_text(0),
-      symbol = stmt:column_text(1),
-      name = stmt:column_text(2),
-      decimals = stmt:column_int(3),
-      logo_url = stmt:column_text(4),
-      created_at = stmt:column_int(5),
-      updated_at = stmt:column_int(6)
+      id = SqlAccessor.column_text(stmt, 0),
+      symbol = SqlAccessor.column_text(stmt, 1),
+      name = SqlAccessor.column_text(stmt, 2),
+      decimals = SqlAccessor.column_int(stmt, 3),
+      logo_url = SqlAccessor.column_text(stmt, 4),
+      created_at = SqlAccessor.column_int(stmt, 5),
+      updated_at = SqlAccessor.column_int(stmt, 6)
     })
   end
 
@@ -188,13 +189,13 @@ function TokenRepository.searchTokens(db, query)
   local tokens = {}
   while stmt:step() == sqlite3.ROW do
     table.insert(tokens, {
-      id = stmt:column_text(0),
-      symbol = stmt:column_text(1),
-      name = stmt:column_text(2),
-      decimals = stmt:column_int(3),
-      logo_url = stmt:column_text(4),
-      created_at = stmt:column_int(5),
-      updated_at = stmt:column_int(6)
+      id = SqlAccessor.column_text(stmt, 0),
+      symbol = SqlAccessor.column_text(stmt, 1),
+      name = SqlAccessor.column_text(stmt, 2),
+      decimals = SqlAccessor.column_int(stmt, 3),
+      logo_url = SqlAccessor.column_text(stmt, 4),
+      created_at = SqlAccessor.column_int(stmt, 5),
+      updated_at = SqlAccessor.column_int(stmt, 6)
     })
   end
 
@@ -226,7 +227,7 @@ function TokenRepository.deleteToken(db, tokenId)
 
   local count = 0
   if checkStmt:step() == sqlite3.ROW then
-    count = checkStmt:column_int(0)
+    count = SqlAccessor.column_int(checkStmt, 0) or 0
   end
 
   checkStmt:finalize()
@@ -363,13 +364,13 @@ function TokenRepository.getTokensByIds(db, tokenIds)
   local tokens = {}
   while stmt:step() == sqlite3.ROW do
     table.insert(tokens, {
-      id = stmt:column_text(0),
-      symbol = stmt:column_text(1),
-      name = stmt:column_text(2),
-      decimals = stmt:column_int(3),
-      logo_url = stmt:column_text(4),
-      created_at = stmt:column_int(5),
-      updated_at = stmt:column_int(6)
+      id = SqlAccessor.column_text(stmt, 0),
+      symbol = SqlAccessor.column_text(stmt, 1),
+      name = SqlAccessor.column_text(stmt, 2),
+      decimals = SqlAccessor.column_int(stmt, 3),
+      logo_url = SqlAccessor.column_text(stmt, 4),
+      created_at = SqlAccessor.column_int(stmt, 5),
+      updated_at = SqlAccessor.column_int(stmt, 6)
     })
   end
 
@@ -398,10 +399,10 @@ function TokenRepository.getTokenStatistics(db)
   local stats = nil
   if stmt:step() == sqlite3.ROW then
     stats = {
-      total_tokens = stmt:column_int(0),
-      oldest_token_timestamp = stmt:column_int(1),
-      newest_token_timestamp = stmt:column_int(2),
-      last_updated_timestamp = stmt:column_int(3)
+      total_tokens = SqlAccessor.column_int(stmt, 0),
+      oldest_token_timestamp = SqlAccessor.column_int(stmt, 1),
+      newest_token_timestamp = SqlAccessor.column_int(stmt, 2),
+      last_updated_timestamp = SqlAccessor.column_int(stmt, 3)
     }
   end
 

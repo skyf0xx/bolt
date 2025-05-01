@@ -1,6 +1,7 @@
 local sqlite3 = require('lsqlite3')
 local Constants = require('dex.utils.constants')
 local Logger = require('dex.utils.logger')
+local SqlAccessor = require('dex.utils.sql_accessor') -- Add this new helper
 Logger = Logger.createLogger("PoolRepository")
 
 local PoolRepository = {}
@@ -99,14 +100,14 @@ function PoolRepository.getPool(db, poolId)
   local result = nil
   if stmt:step() == sqlite3.ROW then
     result = {
-      id = stmt:column_text(0),
-      source = stmt:column_text(1),
-      token_a_id = stmt:column_text(2),
-      token_b_id = stmt:column_text(3),
-      fee_bps = stmt:column_int(4),
-      status = stmt:column_text(5),
-      created_at = stmt:column_int(6),
-      updated_at = stmt:column_int(7)
+      id = SqlAccessor.column_text(stmt, 0),
+      source = SqlAccessor.column_text(stmt, 1),
+      token_a_id = SqlAccessor.column_text(stmt, 2),
+      token_b_id = SqlAccessor.column_text(stmt, 3),
+      fee_bps = SqlAccessor.column_int(stmt, 4),
+      status = SqlAccessor.column_text(stmt, 5),
+      created_at = SqlAccessor.column_int(stmt, 6),
+      updated_at = SqlAccessor.column_int(stmt, 7)
     }
   end
 
@@ -127,14 +128,14 @@ function PoolRepository.getAllPools(db)
   local pools = {}
   while stmt:step() == sqlite3.ROW do
     table.insert(pools, {
-      id = stmt:column_text(0),
-      source = stmt:column_text(1),
-      token_a_id = stmt:column_text(2),
-      token_b_id = stmt:column_text(3),
-      fee_bps = stmt:column_int(4),
-      status = stmt:column_text(5),
-      created_at = stmt:column_int(6),
-      updated_at = stmt:column_int(7)
+      id = SqlAccessor.column_text(stmt, 0),
+      source = SqlAccessor.column_text(stmt, 1),
+      token_a_id = SqlAccessor.column_text(stmt, 2),
+      token_b_id = SqlAccessor.column_text(stmt, 3),
+      fee_bps = SqlAccessor.column_int(stmt, 4),
+      status = SqlAccessor.column_text(stmt, 5),
+      created_at = SqlAccessor.column_int(stmt, 6),
+      updated_at = SqlAccessor.column_int(stmt, 7)
     })
   end
 
@@ -161,14 +162,14 @@ function PoolRepository.getPoolsBySource(db, source)
   local pools = {}
   while stmt:step() == sqlite3.ROW do
     table.insert(pools, {
-      id = stmt:column_text(0),
-      source = stmt:column_text(1),
-      token_a_id = stmt:column_text(2),
-      token_b_id = stmt:column_text(3),
-      fee_bps = stmt:column_int(4),
-      status = stmt:column_text(5),
-      created_at = stmt:column_int(6),
-      updated_at = stmt:column_int(7)
+      id = SqlAccessor.column_text(stmt, 0),
+      source = SqlAccessor.column_text(stmt, 1),
+      token_a_id = SqlAccessor.column_text(stmt, 2),
+      token_b_id = SqlAccessor.column_text(stmt, 3),
+      fee_bps = SqlAccessor.column_int(stmt, 4),
+      status = SqlAccessor.column_text(stmt, 5),
+      created_at = SqlAccessor.column_int(stmt, 6),
+      updated_at = SqlAccessor.column_int(stmt, 7)
     })
   end
 
@@ -196,14 +197,14 @@ function PoolRepository.getPoolsByToken(db, tokenId)
   local pools = {}
   while stmt:step() == sqlite3.ROW do
     table.insert(pools, {
-      id = stmt:column_text(0),
-      source = stmt:column_text(1),
-      token_a_id = stmt:column_text(2),
-      token_b_id = stmt:column_text(3),
-      fee_bps = stmt:column_int(4),
-      status = stmt:column_text(5),
-      created_at = stmt:column_int(6),
-      updated_at = stmt:column_int(7)
+      id = SqlAccessor.column_text(stmt, 0),
+      source = SqlAccessor.column_text(stmt, 1),
+      token_a_id = SqlAccessor.column_text(stmt, 2),
+      token_b_id = SqlAccessor.column_text(stmt, 3),
+      fee_bps = SqlAccessor.column_int(stmt, 4),
+      status = SqlAccessor.column_text(stmt, 5),
+      created_at = SqlAccessor.column_int(stmt, 6),
+      updated_at = SqlAccessor.column_int(stmt, 7)
     })
   end
 
@@ -251,14 +252,14 @@ function PoolRepository.getPoolByTokenPair(db, tokenAId, tokenBId, source)
   local result = nil
   if stmt:step() == sqlite3.ROW then
     result = {
-      id = stmt:column_text(0),
-      source = stmt:column_text(1),
-      token_a_id = stmt:column_text(2),
-      token_b_id = stmt:column_text(3),
-      fee_bps = stmt:column_int(4),
-      status = stmt:column_text(5),
-      created_at = stmt:column_int(6),
-      updated_at = stmt:column_int(7)
+      id = SqlAccessor.column_text(stmt, 0),
+      source = SqlAccessor.column_text(stmt, 1),
+      token_a_id = SqlAccessor.column_text(stmt, 2),
+      token_b_id = SqlAccessor.column_text(stmt, 3),
+      fee_bps = SqlAccessor.column_int(stmt, 4),
+      status = SqlAccessor.column_text(stmt, 5),
+      created_at = SqlAccessor.column_int(stmt, 6),
+      updated_at = SqlAccessor.column_int(stmt, 7)
     }
   end
 
@@ -410,23 +411,23 @@ function PoolRepository.getPoolsWithTokenInfo(db)
   local pools = {}
   while stmt:step() == sqlite3.ROW do
     table.insert(pools, {
-      id = stmt:column_text(0),
-      source = stmt:column_text(1),
-      fee_bps = stmt:column_int(2),
-      status = stmt:column_text(3),
+      id = SqlAccessor.column_text(stmt, 0),
+      source = SqlAccessor.column_text(stmt, 1),
+      fee_bps = SqlAccessor.column_int(stmt, 2),
+      status = SqlAccessor.column_text(stmt, 3),
       token_a = {
-        id = stmt:column_text(4),
-        symbol = stmt:column_text(5),
-        name = stmt:column_text(6),
-        decimals = stmt:column_int(7),
-        logo_url = stmt:column_text(8)
+        id = SqlAccessor.column_text(stmt, 4),
+        symbol = SqlAccessor.column_text(stmt, 5),
+        name = SqlAccessor.column_text(stmt, 6),
+        decimals = SqlAccessor.column_int(stmt, 7),
+        logo_url = SqlAccessor.column_text(stmt, 8)
       },
       token_b = {
-        id = stmt:column_text(9),
-        symbol = stmt:column_text(10),
-        name = stmt:column_text(11),
-        decimals = stmt:column_int(12),
-        logo_url = stmt:column_text(13)
+        id = SqlAccessor.column_text(stmt, 9),
+        symbol = SqlAccessor.column_text(stmt, 10),
+        name = SqlAccessor.column_text(stmt, 11),
+        decimals = SqlAccessor.column_int(stmt, 12),
+        logo_url = SqlAccessor.column_text(stmt, 13)
       }
     })
   end
@@ -460,7 +461,7 @@ function PoolRepository.updateReserves(db, poolId, reserveA, reserveB)
 
   local exists = false
   if checkStmt:step() == sqlite3.ROW then
-    exists = checkStmt:column_int(0) > 0
+    exists = SqlAccessor.column_int(checkStmt, 0) > 0
   end
 
   checkStmt:finalize()
@@ -530,9 +531,9 @@ function PoolRepository.getReserves(db, poolId)
   local result = nil
   if stmt:step() == sqlite3.ROW then
     result = {
-      reserve_a = stmt:column_text(0),
-      reserve_b = stmt:column_text(1),
-      last_updated = stmt:column_int(2)
+      reserve_a = SqlAccessor.column_text(stmt, 0),
+      reserve_b = SqlAccessor.column_text(stmt, 1),
+      last_updated = SqlAccessor.column_int(stmt, 2)
     }
   end
 
@@ -558,13 +559,13 @@ function PoolRepository.getAllReserves(db)
 
   local reserves = {}
   while stmt:step() == sqlite3.ROW do
-    reserves[stmt:column_text(0)] = {
-      pool_id = stmt:column_text(0),
-      reserve_a = stmt:column_text(1),
-      reserve_b = stmt:column_text(2),
-      last_updated = stmt:column_int(3),
-      token_a_id = stmt:column_text(4),
-      token_b_id = stmt:column_text(5)
+    reserves[SqlAccessor.column_text(stmt, 0)] = {
+      pool_id = SqlAccessor.column_text(stmt, 0),
+      reserve_a = SqlAccessor.column_text(stmt, 1),
+      reserve_b = SqlAccessor.column_text(stmt, 2),
+      last_updated = SqlAccessor.column_int(stmt, 3),
+      token_a_id = SqlAccessor.column_text(stmt, 4),
+      token_b_id = SqlAccessor.column_text(stmt, 5)
     }
   end
 
@@ -592,7 +593,7 @@ function PoolRepository.needsReserveRefresh(db, poolId, maxAge)
 
   local needsRefresh = true
   if stmt:step() == sqlite3.ROW then
-    local lastUpdated = stmt:column_int(0)
+    local lastUpdated = SqlAccessor.column_int(stmt, 0)
     local currentTime = os.time()
     needsRefresh = (currentTime - lastUpdated) > maxAge
   end
@@ -629,12 +630,12 @@ function PoolRepository.getPoolsNeedingReserveRefresh(db, maxAge)
   local pools = {}
   while stmt:step() == sqlite3.ROW do
     table.insert(pools, {
-      id = stmt:column_text(0),
-      source = stmt:column_text(1),
-      token_a_id = stmt:column_text(2),
-      token_b_id = stmt:column_text(3),
-      fee_bps = stmt:column_int(4),
-      status = stmt:column_text(5)
+      id = SqlAccessor.column_text(stmt, 0),
+      source = SqlAccessor.column_text(stmt, 1),
+      token_a_id = SqlAccessor.column_text(stmt, 2),
+      token_b_id = SqlAccessor.column_text(stmt, 3),
+      fee_bps = SqlAccessor.column_int(stmt, 4),
+      status = SqlAccessor.column_text(stmt, 5)
     })
   end
 
@@ -665,12 +666,12 @@ function PoolRepository.getPoolStatistics(db)
   local stats = nil
   if stmt:step() == sqlite3.ROW then
     stats = {
-      total_pools = stmt:column_int(0),
-      source_count = stmt:column_int(1),
-      oldest_pool_timestamp = stmt:column_int(2),
-      newest_pool_timestamp = stmt:column_int(3),
-      last_updated_timestamp = stmt:column_int(4),
-      reserves_count = stmt:column_int(5)
+      total_pools = SqlAccessor.column_int(stmt, 0),
+      source_count = SqlAccessor.column_int(stmt, 1),
+      oldest_pool_timestamp = SqlAccessor.column_int(stmt, 2),
+      newest_pool_timestamp = SqlAccessor.column_int(stmt, 3),
+      last_updated_timestamp = SqlAccessor.column_int(stmt, 4),
+      reserves_count = SqlAccessor.column_int(stmt, 5)
     }
   end
 
@@ -694,7 +695,7 @@ function PoolRepository.getPoolStatistics(db)
   stats = stats or {}
   stats.sources = {}
   while sourceStmt:step() == sqlite3.ROW do
-    stats.sources[sourceStmt:column_text(0)] = sourceStmt:column_int(1)
+    stats.sources[SqlAccessor.column_text(sourceStmt, 0)] = SqlAccessor.column_int(sourceStmt, 1)
   end
 
   sourceStmt:finalize()
@@ -747,13 +748,13 @@ function PoolRepository.findConnectingPools(db, tokenIdA, tokenIdB, maxHops)
   local aPools = {}
   while aStmt:step() == sqlite3.ROW do
     table.insert(aPools, {
-      id = aStmt:column_text(0),
-      source = aStmt:column_text(1),
-      token_a_id = aStmt:column_text(2),
-      token_b_id = aStmt:column_text(3),
-      fee_bps = aStmt:column_int(4),
-      status = aStmt:column_text(5),
-      connecting_token_id = aStmt:column_text(8)
+      id = SqlAccessor.column_text(aStmt, 0),
+      source = SqlAccessor.column_text(aStmt, 1),
+      token_a_id = SqlAccessor.column_text(aStmt, 2),
+      token_b_id = SqlAccessor.column_text(aStmt, 3),
+      fee_bps = SqlAccessor.column_int(aStmt, 4),
+      status = SqlAccessor.column_text(aStmt, 5),
+      connecting_token_id = SqlAccessor.column_text(aStmt, 8)
     })
   end
 
@@ -789,6 +790,21 @@ function PoolRepository.findConnectingPools(db, tokenIdA, tokenIdB, maxHops)
   end
 
   return results
+end
+
+-- Use SqlAccessor.query for more efficient querying
+function PoolRepository.queryPools(db, sql, params)
+  return SqlAccessor.query(db, sql, params)
+end
+
+-- Use SqlAccessor.query_row for getting a single row
+function PoolRepository.queryPoolRow(db, sql, params)
+  return SqlAccessor.query_row(db, sql, params)
+end
+
+-- Use SqlAccessor.execute for running SQL commands
+function PoolRepository.executeSQL(db, sql, params)
+  return SqlAccessor.execute(db, sql, params)
 end
 
 return PoolRepository
