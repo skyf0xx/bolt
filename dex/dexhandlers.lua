@@ -343,8 +343,13 @@ function DexHandlers.handleCollectData(msg)
           return
         end
 
+        Logger.info("Saved to database")
+
         -- Rebuild graph if requested
         if msg.RebuildGraph and Components.graph then
+          Logger.info("Rebuilding graph")
+
+          -- This is the key fix: use the proper function to rebuild the graph
           Init.buildGraph(Components, function(success, err)
             if not success then
               msg.reply({
@@ -366,6 +371,8 @@ function DexHandlers.handleCollectData(msg)
             })
           end)
         else
+          -- No graph rebuild requested
+          Logger.info("Skipping graph build")
           msg.reply({
             Status = "Success",
             Pools = tostring(#results.pools),
