@@ -65,7 +65,7 @@ function TokenRepository.addOrUpdateToken(db, token)
     end)
 
     if not success then
-      Logger.error("Failed to insert token", { id = token.id, error = err })
+      Logger.error("Failed to insert token", { id = token.id, error = err, params = params })
       return false, "Failed to insert token: " .. tostring(err)
     end
 
@@ -313,7 +313,8 @@ function TokenRepository.batchInsertTokens(db, tokens)
     local result = stmt:step()
 
     if result ~= sqlite3.DONE then
-      Logger.warn("Failed to insert token", { id = token.id, error = db:errmsg() })
+      Logger.error("Failed to insert token",
+        { id = token.id, error = db:errmsg(), params = { token.id, token.symbol, token.name, token.decimals, token.logo_url, created_at, currentTime } })
       errorCount = errorCount + 1
     else
       successCount = successCount + 1
