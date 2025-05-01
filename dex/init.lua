@@ -15,11 +15,11 @@ local Utils = require('dex.utils.utils')
 local Init = {}
 
 -- Setup database and schema
-function Init.setupDatabase(dbPath)
-  Logger.info("Setting up database", { path = dbPath })
+function Init.setupDatabase()
+  Logger.info("Setting up database")
 
   -- Initialize database (reusing existing connection if available)
-  local db, dbErr = Schema.init(dbPath)
+  local db, dbErr = Schema.init()
   if not db then
     Logger.error("Database initialization failed", { error = dbErr })
     return nil, "Database initialization failed: " .. dbErr
@@ -136,11 +136,11 @@ function Init.buildGraph(components, callback)
 end
 
 -- Main initialization function
-function Init.initialize(dbPath, callback)
+function Init.initialize(callback)
   Logger.info("Starting DEX Aggregator initialization")
 
   -- Setup database (reusing existing connection if available)
-  Db = Init.setupDatabase(dbPath)
+  Db = Init.setupDatabase()
   if not Db then
     callback(false, "Database initialization failed")
     return
@@ -159,7 +159,6 @@ function Init.handleInitMessage(msg)
     return
   end
 
-  local dbPath = msg.DbPath or Constants.DB.FILENAME
   local forceReinit = msg.ForceReinit == true
 
   -- If we already have components and aren't forcing reinit, just report status
@@ -178,7 +177,7 @@ function Init.handleInitMessage(msg)
     return
   end
 
-  Init.initialize(dbPath, function(success, result)
+  Init.initialize(function(success, result)
     if success then
       msg.reply({
         Status = "Success",
@@ -220,10 +219,9 @@ function Init.handleResetMessage(msg)
     return
   end
 
-  local dbPath = msg.DbPath or Constants.DB.FILENAME
 
   -- Initialize database (use existing connection if available)
-  local db = Schema.db or Schema.init(dbPath)
+  local db = Schema.db or Schema.init()
   if not db then
     msg.reply({
       Status = "Error",
