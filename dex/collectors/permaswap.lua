@@ -14,12 +14,12 @@ function Permaswap.fetchPoolInfo(poolAddress, callback)
     Target = poolAddress,
     Action = Constants.API.PERMASWAP.INFO
   }).onReply(function(response)
-    if not response or response.Error then
+    if response.Error then
       Logger.error("Failed to fetch pool info", {
         pool = poolAddress,
-        error = response and response.Error or "No response"
+        error = response.Error
       })
-      callback(nil, response and response.Error or "No response from pool")
+      callback(nil, response.Error)
     else
       callback(response)
     end
@@ -74,12 +74,12 @@ function Permaswap.getAmountOut(poolAddress, tokenIn, amountIn, callback)
     TokenIn = tokenIn,
     AmountIn = tostring(amountIn)
   }).onReply(function(response)
-    if not response or response.Error then
+    if response.Error then
       Logger.error("Failed to get amount out", {
         pool = poolAddress,
-        error = response and response.Error or "No response"
+        error = response.Error
       })
-      callback(nil, response and response.Error or "No response from pool")
+      callback(nil, response.Error)
     else
       callback({
         amountOut = response.AmountOut,
@@ -244,12 +244,12 @@ function Permaswap.executeSwap(poolAddress, tokenIn, tokenOut, amountIn, minAmou
   end
 
   ao.send(request).onReply(function(response)
-    if not response or response.Error then
+    if response.Error then
       Logger.error("Failed to execute swap", {
         pool = poolAddress,
-        error = response and response.Error or "No response"
+        error = response.Error
       })
-      callback(nil, response and response.Error or "No response from pool")
+      callback(nil, response.Error)
       return
     end
 
@@ -282,13 +282,13 @@ function Permaswap.getOrderStatus(poolAddress, orderId, callback)
     Action = Constants.API.PERMASWAP.GET_ORDER,
     OrderId = orderId
   }).onReply(function(response)
-    if not response or response.Error then
+    if response.Error then
       Logger.error("Failed to get order status", {
         pool = poolAddress,
         orderId = orderId,
-        error = response and response.Error or "No response"
+        error = response.Error
       })
-      callback(nil, response and response.Error or "No response from pool")
+      callback(nil, response.Error)
       return
     end
 
@@ -321,12 +321,12 @@ function Permaswap.getBalance(poolAddress, userAddress, callback)
   end
 
   ao.send(request).onReply(function(response)
-    if not response or response.Error then
+    if response.Error then
       Logger.error("Failed to get balance", {
         pool = poolAddress,
-        error = response and response.Error or "No response"
+        error = response.Error
       })
-      callback(nil, response and response.Error or "No response from pool")
+      callback(nil, response.Error)
       return
     end
 

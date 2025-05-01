@@ -14,12 +14,12 @@ function Botega.fetchPoolInfo(poolAddress, callback)
     Target = poolAddress,
     Action = Constants.API.BOTEGA.INFO
   }).onReply(function(response)
-    if not response or response.Error then
+    if response.Error then
       Logger.error("Failed to fetch pool info", {
         pool = poolAddress,
-        error = response and response.Error or "No response"
+        error = response.Error
       })
-      callback(nil, response and response.Error or "No response from pool")
+      callback(nil, response.Error)
     else
       callback(response)
     end
@@ -34,12 +34,12 @@ function Botega.fetchPair(poolAddress, callback)
     Target = poolAddress,
     Action = Constants.API.BOTEGA.GET_PAIR
   }).onReply(function(response)
-    if not response or response.Error then
+    if response.Error then
       Logger.error("Failed to fetch token pair", {
         pool = poolAddress,
-        error = response and response.Error or "No response"
+        error = response.Error
       })
-      callback(nil, response and response.Error or "No response from pool")
+      callback(nil, response.Error)
     else
       callback({
         tokenA = response["Token-A"],
@@ -57,12 +57,12 @@ function Botega.fetchReserves(poolAddress, callback)
     Target = poolAddress,
     Action = Constants.API.BOTEGA.GET_RESERVES
   }).onReply(function(response)
-    if not response or response.Error then
+    if response.Error then
       Logger.error("Failed to fetch reserves", {
         pool = poolAddress,
-        error = response and response.Error or "No response"
+        error = response.Error
       })
-      callback(nil, response and response.Error or "No response from pool")
+      callback(nil, response.Error)
       return
     end
 
@@ -95,12 +95,12 @@ function Botega.fetchFeePercentage(poolAddress, hasDiscount, callback)
       ["Has-Fee-Discount"] = hasDiscount and "true" or "false"
     }
   }).onReply(function(response)
-    if not response or response.Error then
+    if response.Error then
       Logger.error("Failed to fetch fee percentage", {
         pool = poolAddress,
-        error = response and response.Error or "No response"
+        error = response.Error
       })
-      callback(nil, response and response.Error or "No response from pool")
+      callback(nil, response.Error)
     else
       callback({
         lpFeePercentage = tonumber(response["LP-Fee-Percentage"]) or 0,
@@ -163,12 +163,12 @@ function Botega.getSwapOutput(poolAddress, tokenIn, amountIn, userAddress, callb
       Swapper = userAddress or "user_address" -- Default value
     }
   }).onReply(function(response)
-    if not response or response.Error then
+    if response.Error then
       Logger.error("Failed to get swap output", {
         pool = poolAddress,
-        error = response and response.Error or "No response"
+        error = response.Error
       })
-      callback(nil, response and response.Error or "No response from pool")
+      callback(nil, response.Error)
     else
       callback({
         amountOut = response.Output,
@@ -372,12 +372,12 @@ function Botega.executeSwap(poolAddress, tokenIn, amountIn, minAmountOut, userAd
   end
 
   ao.send(request).onReply(function(response)
-    if not response or response.Error then
+    if response.Error then
       Logger.error("Failed to execute swap", {
         pool = poolAddress,
-        error = response and response.Error or "No response"
+        error = response.Error
       })
-      callback(nil, response and response.Error or "No response from pool")
+      callback(nil, response.Error)
     else
       callback({
         action = response.Action,
@@ -410,12 +410,12 @@ function Botega.getBalance(poolAddress, userAddress, callback)
   end
 
   ao.send(request).onReply(function(response)
-    if not response or response.Error then
+    if response.Error then
       Logger.error("Failed to get balance", {
         pool = poolAddress,
-        error = response and response.Error or "No response"
+        error = response.Error
       })
-      callback(nil, response and response.Error or "No response from pool")
+      callback(nil, response.Error)
     else
       callback({
         lpBalance = response.Balance,
@@ -433,12 +433,12 @@ function Botega.getTotalSupply(poolAddress, callback)
     Target = poolAddress,
     Action = Constants.API.BOTEGA.TOTAL_SUPPLY
   }).onReply(function(response)
-    if not response or response.Error then
+    if response.Error then
       Logger.error("Failed to get total supply", {
         pool = poolAddress,
-        error = response and response.Error or "No response"
+        error = response.Error
       })
-      callback(nil, response and response.Error or "No response from pool")
+      callback(nil, response.Error)
     else
       callback({
         totalSupply = response["Total-Supply"],
@@ -456,12 +456,12 @@ function Botega.registerSubscriber(poolAddress, callback)
     Target = poolAddress,
     Action = "Register-Subscriber"
   }).onReply(function(response)
-    if not response or response.Error then
+    if response.Error then
       Logger.error("Failed to register as subscriber", {
         pool = poolAddress,
-        error = response and response.Error or "No response"
+        error = response.Error
       })
-      callback(nil, response and response.Error or "No response from pool")
+      callback(nil, response.Error)
     else
       callback({
         whitelisted = response.Whitelisted == "true"
@@ -481,12 +481,12 @@ function Botega.subscribeToTopics(poolAddress, topics, callback)
     Action = "Subscribe-To-Topics",
     Topics = topicsJson
   }).onReply(function(response)
-    if not response or response.Error then
+    if response.Error then
       Logger.error("Failed to subscribe to topics", {
         pool = poolAddress,
-        error = response and response.Error or "No response"
+        error = response.Error
       })
-      callback(nil, response and response.Error or "No response from pool")
+      callback(nil, response.Error)
     else
       callback({
         updatedTopics = response["Updated-Topics"]

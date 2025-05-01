@@ -265,7 +265,7 @@ function Collector.refreshReserves(pools, finalCallback)
       collector.fetchReserves(pool.id, function(reserves, err)
         pendingPools = pendingPools - 1
 
-        if not reserves then
+        if err then
           results.errors[pool.id] = err
         else
           local normalizedReserves = {
@@ -304,7 +304,7 @@ function Collector.refreshReserves(pools, finalCallback)
       collector.fetchReserves(pool.id, function(reserves, err)
         pendingPools = pendingPools - 1
 
-        if not reserves then
+        if err then
           results.errors[pool.id] = err
         else
           local normalizedReserves = {
