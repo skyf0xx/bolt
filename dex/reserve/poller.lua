@@ -267,6 +267,7 @@ function Poller.executePollingCycle(msg)
       -- Reply with the result
       if msg.reply then
         msg.reply({
+          Action = msg.Action .. "Response",
           Status = "Success",
           RefreshResult = Utils.jsonEncode(result),
           Timestamp = tostring(os.time()),

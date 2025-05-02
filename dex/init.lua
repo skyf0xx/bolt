@@ -165,6 +165,7 @@ function Init.handleInitMessage(msg)
   if Components and Components.graph and Components.graph.initialized and not forceReinit then
     Logger.info("Using existing initialized components")
     msg.reply({
+      Action = msg.Action .. "Response",
       Status = "Success",
       Components = "Reused",
       IsReused = 'true',
@@ -180,6 +181,7 @@ function Init.handleInitMessage(msg)
   Init.initialize(function(success, result)
     if success then
       msg.reply({
+        Action = msg.Action .. "Response",
         Status = "Success",
         Components = "Initialized",
         IsReused = 'false',
@@ -191,6 +193,7 @@ function Init.handleInitMessage(msg)
       })
     else
       msg.reply({
+        Action = msg.Action .. "Response",
         Status = "Error",
         Error = Utils.jsonEncode(result)
       })
@@ -224,6 +227,7 @@ function Init.handleResetMessage(msg)
   local db = Schema.db or Schema.init()
   if not db then
     msg.reply({
+      Action = msg.Action .. "Response",
       Status = "Error",
       Error = "Database initialization failed"
     })
@@ -237,11 +241,13 @@ function Init.handleResetMessage(msg)
       Components = nil
 
       msg.reply({
+        Action = msg.Action .. "Response",
         Status = "Success",
         Message = "Database reset complete"
       })
     else
       msg.reply({
+        Action = msg.Action .. "Response",
         Status = "Error",
         Error = Utils.jsonEncode(err)
       })
