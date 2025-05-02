@@ -29,7 +29,7 @@ function DexHandlers.handleStatus(msg)
     return
   end
 
-  local graphStats = Components.graph.getStats()
+  local graphStats = Components.graph:getStats()
   local pollerStats = Components.poller.getCacheStats()
   local dbStats = {}
 
