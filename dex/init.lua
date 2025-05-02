@@ -124,7 +124,7 @@ function Init.buildGraph(components, callback)
   Logger.info("Building graph", { pools = #pools, tokens = #tokens })
 
   -- Build graph from pools and tokens
-  local success = graph.buildFromPools(pools, tokens)
+  local success = graph:buildFromPools(pools, tokens)
 
   if success then
     Logger.info("Graph built successfully")
