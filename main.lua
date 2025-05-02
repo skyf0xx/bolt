@@ -56,6 +56,10 @@ Handlers.add("CollectData",
   Handlers.utils.hasMatchingTag("Action", "CollectData"),
   DexHandlers.handleCollectData)
 
+Handlers.add("UpdateTokenInfo",
+  Handlers.utils.hasMatchingTag("Action", "UpdateTokenInfo"),
+  DexHandlers.handleUpdateTokenInfo)
+
 Handlers.add("PollingCycle",
   Handlers.utils.hasMatchingTag("Action", "PollingCycle"),
   DexHandlers.handlePollingCycle)
