@@ -23,6 +23,108 @@ function DexHandlers.handleError(msg, error, code)
   })
 end
 
+-- Handler for updating token information from blockchain
+function DexHandlers.handleUpdateTokenInfo(msg)
+  if not Components.collector or not Components.collector.db then
+    DexHandlers.handleError(msg, "Database not initialized", "ERR_DB_NOT_INITIALIZED")
+    return
+  end
+
+  local batchSize = msg.BatchSize or 10 -- Process tokens in manageable batches
+  local forceUpdate = msg.ForceUpdate or false
+
+  Logger.info("Starting token information update", { batchSize = batchSize, forceUpdate = forceUpdate })
+
+  -- Get all tokens from database
+  local tokens = TokenRepository.getAllTokens(Components.collector.db)
+
+  if #tokens == 0 then
+    msg.reply({
+      Action = msg.Action .. "Response",
+      Status = "Success",
+      Message = "No tokens found to update",
+      Count = "0"
+    })
+    return
+  end
+
+  -- Track progress
+  local pendingTokens = math.min(batchSize, #tokens)
+  local totalTokens = #tokens
+  local processedTokens = 0
+  local updatedTokens = 0
+  local failedTokens = 0
+  local errors = {}
+
+  Logger.info("Updating token information", { count = pendingTokens, total = totalTokens })
+
+  -- Process tokens in the current batch
+  for i = 1, pendingTokens do
+    local token = tokens[i]
+
+    -- Call the blockchain to get token info
+    ao.send({
+      Target = token.id,
+      Action = "Info"
+    }).onReply(function(response)
+      processedTokens = processedTokens + 1
+
+      if response.Error then
+        failedTokens = failedTokens + 1
+        errors[token.id] = response.Error
+        Logger.warn("Failed to get token info", { id = token.id, error = response.Error })
+      else
+        -- Skip update if no new information and not forcing update
+        if not forceUpdate and
+            not response.Name and
+            not response.Ticker and
+            not response.Denomination and
+            not response.Logo then
+          Logger.debug("No new information for token", { id = token.id })
+        else
+          -- Update token with received information
+          local updatedToken = {
+            id = token.id,
+            symbol = response.Ticker or token.symbol,
+            name = response.Name or token.name,
+            decimals = tonumber(response.Denomination) or token.decimals,
+            logo_url = response.Logo or token.logo_url
+          }
+
+          local success, err = TokenRepository.addOrUpdateToken(Components.collector.db, updatedToken)
+
+          if success then
+            updatedTokens = updatedTokens + 1
+            Logger.info("Updated token info", {
+              id = token.id,
+              symbol = updatedToken.symbol,
+              name = updatedToken.name
+            })
+          else
+            failedTokens = failedTokens + 1
+            errors[token.id] = err
+            Logger.error("Failed to update token info", { id = token.id, error = err })
+          end
+        end
+      end
+
+      -- If all tokens in this batch are processed, send response
+      if processedTokens >= pendingTokens then
+        msg.reply({
+          Action = msg.Action .. "Response",
+          Status = "Success",
+          Processed = tostring(processedTokens),
+          Total = tostring(totalTokens),
+          Updated = tostring(updatedTokens),
+          Failed = tostring(failedTokens),
+          Errors = Utils.jsonEncode(errors),
+          RemainingTokens = tostring(totalTokens - processedTokens)
+        })
+      end
+    end)
+  end
+end
+
 -- Handler for status request
 function DexHandlers.handleStatus(msg)
   if not Components.graph or not Components.graph.initialized then

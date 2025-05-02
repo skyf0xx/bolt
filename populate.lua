@@ -37,3 +37,11 @@ Handlers.add('populate-botega', Handlers.utils.hasMatchingTag('Action', 'Botega'
     RebuildGraph = 'true'
   })
 end)
+
+Handlers.add('update-token-data', Handlers.utils.hasMatchingTag('Action', 'TokenData'), function(msg)
+  assert(msg.From == ao.id, "Only authorized processes can call this handler")
+  ao.send({
+    Target = BOLT_PROTOCOL,
+    Action = "UpdateTokenInfo",
+  })
+end)
