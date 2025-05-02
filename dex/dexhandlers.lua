@@ -16,10 +16,145 @@ function DexHandlers.handleError(msg, error, code)
   Logger.error("Error in handler", { error = error, code = errorCode })
 
   msg.reply({
+    Action = msg.Action .. "Response",
     Status = "Error",
     Error = tostring(error),
     Code = tostring(errorCode)
   })
+end
+
+-- Handler for updating token information from blockchain
+function DexHandlers.handleUpdateTokenInfo(msg)
+  if not Components.collector or not Components.collector.db then
+    DexHandlers.handleError(msg, "Database not initialized", "ERR_DB_NOT_INITIALIZED")
+    return
+  end
+
+  local SqlAccessor = require('dex.utils.sql_accessor')
+  local Utils = require('dex.utils.utils')
+  local TokenRepository = require('dex.db.token_repository')
+  local Logger = require('dex.utils.logger')
+  Logger = Logger.createLogger("TokenUpdater")
+
+  local batchSize = msg.BatchSize or 10
+  local forceUpdate = msg.ForceUpdate or false
+
+  Logger.info("Starting token information update", { batchSize = batchSize, forceUpdate = forceUpdate })
+
+  -- Get all tokens from database
+  local tokens = TokenRepository.getAllTokens(Components.collector.db)
+
+  if #tokens == 0 then
+    msg.reply({
+      Action = msg.Action .. "Response",
+      Status = "Success",
+      Message = "No tokens found to update",
+      Count = "0"
+    })
+    return
+  end
+
+  -- Track progress
+  local pendingTokens = math.min(batchSize, #tokens)
+  local totalTokens = #tokens
+  local processedTokens = 0
+  local updatedTokens = 0
+  local failedTokens = 0
+  local errors = {}
+
+  Logger.info("Updating token information", { count = pendingTokens, total = totalTokens })
+
+  -- Function to update a token safely
+  local function updateTokenSafely(db, token, newInfo)
+    local currentTime = os.time()
+
+    -- Prepare new token data
+    local updatedToken = {
+      id = token.id,
+      symbol = newInfo.Ticker or token.symbol,
+      name = newInfo.Name or token.name,
+      decimals = tonumber(newInfo.Denomination) or token.decimals,
+      logo_url = newInfo.Logo or token.logo_url
+    }
+
+    -- Check if there are actual changes
+    local hasChanges =
+        updatedToken.symbol ~= token.symbol or
+        updatedToken.name ~= token.name or
+        updatedToken.decimals ~= token.decimals or
+        updatedToken.logo_url ~= token.logo_url
+
+    if not hasChanges and not forceUpdate then
+      return true, "No changes required"
+    end
+
+    -- Directly use SqlAccessor to execute the update
+    local sql = [[
+      UPDATE tokens
+      SET symbol = ?, name = ?, decimals = ?, logo_url = ?, updated_at = ?
+      WHERE id = ?
+    ]]
+
+    local params = {
+      updatedToken.symbol,
+      updatedToken.name,
+      updatedToken.decimals,
+      updatedToken.logo_url,
+      currentTime,
+      token.id
+    }
+
+    return SqlAccessor.execute(db, sql, params)
+  end
+
+  -- Process tokens in the current batch
+  for i = 1, pendingTokens do
+    local token = tokens[i]
+
+    -- Call the blockchain to get token info
+    ao.send({
+      Target = token.id,
+      Action = "Info"
+    }).onReply(function(response)
+      processedTokens = processedTokens + 1
+
+      if response.Error then
+        failedTokens = failedTokens + 1
+        errors[token.id] = response.Error
+        Logger.warn("Failed to get token info", { id = token.id, error = response.Error })
+      else
+        -- Update token with received information
+        local success, err = updateTokenSafely(Components.collector.db, token, response)
+
+        if success then
+          updatedTokens = updatedTokens + 1
+          Logger.info("Updated token info", {
+            id = token.id,
+            symbol = response.Ticker,
+            name = response.Name
+          })
+        else
+          failedTokens = failedTokens + 1
+          errors[token.id] = err
+          Logger.error("Failed to update token info", { id = token.id, error = err })
+        end
+      end
+
+      -- If all tokens in this batch are processed, send response
+      if processedTokens >= pendingTokens then
+        msg.reply({
+          Action = msg.Action .. "Response",
+          Status = "Success",
+          Processed = tostring(processedTokens),
+          Total = tostring(totalTokens),
+          Updated = tostring(updatedTokens),
+          Failed = tostring(failedTokens),
+          Errors = Utils.jsonEncode(errors),
+          RemainingTokens = tostring(totalTokens - processedTokens)
+        })
+      end
+    end)
+  end
 end
 
 -- Handler for status request
@@ -29,7 +164,7 @@ function DexHandlers.handleStatus(msg)
     return
   end
 
-  local graphStats = Components.graph.getStats()
+  local graphStats = Components.graph:getStats()
   local pollerStats = Components.poller.getCacheStats()
   local dbStats = {}
 
@@ -44,6 +179,7 @@ function DexHandlers.handleStatus(msg)
   end
 
   msg.reply({
+    Action = msg.Action .. "Response",
     Status = "Success",
     Version = Constants.VERSION,
     AppName = Constants.APP_NAME,
@@ -66,6 +202,7 @@ function DexHandlers.handleTokenList(msg)
   local tokens = TokenRepository.searchTokens(Components.collector.db, query)
 
   msg.reply({
+    Action = msg.Action .. "Response",
     Status = "Success",
     Tokens = Utils.jsonEncode(tokens),
     Count = tostring(#tokens),
@@ -90,6 +227,7 @@ function DexHandlers.handlePoolList(msg)
   end
 
   msg.reply({
+    Action = msg.Action .. "Response",
     Status = "Success",
     Pools = Utils.jsonEncode(pools),
     Count = tostring(#pools),
@@ -138,6 +276,7 @@ function DexHandlers.handleQuote(msg)
       end
 
       msg.reply({
+        Action = msg.Action .. "Response",
         Status = "Success",
         Quote = tostring(quoteResults.best_quote),
         AlternativeQuotes = Utils.jsonEncode(quoteResults.quotes),
@@ -166,6 +305,7 @@ function DexHandlers.handleFindPaths(msg)
   local paths = Components.pathFinder.findAllPaths(sourceTokenId, targetTokenId, maxHops)
 
   msg.reply({
+    Action = msg.Action .. "Response",
     Status = "Success",
     Paths = Utils.jsonEncode(paths),
     Count = tostring(#paths),
@@ -198,6 +338,7 @@ function DexHandlers.handleFindRoute(msg)
     end
 
     msg.reply({
+      Action = msg.Action .. "Response",
       Status = "Success",
       Route = Utils.jsonEncode(result),
       SourceToken = sourceTokenId,
@@ -240,6 +381,7 @@ function DexHandlers.handleCalculateOutput(msg)
     end
 
     msg.reply({
+      Action = msg.Action .. "Response",
       Status = "Success",
       Result = Utils.jsonEncode(result)
     })
@@ -259,6 +401,7 @@ function DexHandlers.handleFindArbitrage(msg)
   Components.pathFinder.findArbitrageOpportunities(startTokenId, inputAmount, function(result, err)
     if err then
       msg.reply({
+        Action = msg.Action .. "Response",
         Status = "Partial",
         Error = tostring(err),
         Opportunities = Utils.jsonEncode(result.opportunities or {})
@@ -267,6 +410,7 @@ function DexHandlers.handleFindArbitrage(msg)
     end
 
     msg.reply({
+      Action = msg.Action .. "Response",
       Status = "Success",
       Opportunities = Utils.jsonEncode(result.opportunities),
       Count = tostring(#(result.opportunities)),
@@ -290,6 +434,7 @@ function DexHandlers.handleRefreshReserves(msg)
     -- Refresh specific pools
     Components.poller.pollMultiplePools(poolIds, forceFresh, function(results)
       msg.reply({
+        Action = msg.Action .. "Response",
         Status = "Success",
         Refreshed = tostring(Utils.tableSize(results.reserves)),
         Failed = tostring(Utils.tableSize(results.errors)),
@@ -303,6 +448,7 @@ function DexHandlers.handleRefreshReserves(msg)
 
     Components.poller.refreshStaleReserves(maxAge, batchSize, function(result)
       msg.reply({
+        Action = msg.Action .. "Response",
         Status = "Success",
         Refreshed = tostring(result.refreshed),
         Failed = tostring(result.failed),
@@ -333,6 +479,7 @@ function DexHandlers.handleCollectData(msg)
       Components.collector.saveToDatabase(results, function(success, err)
         if not success then
           msg.reply({
+            Action = msg.Action .. "Response",
             Status = "Partial",
             Error = "Data collected but save failed: " .. tostring(err),
             Pools = tostring(#results.pools),
@@ -343,11 +490,17 @@ function DexHandlers.handleCollectData(msg)
           return
         end
 
+        Logger.info("Saved to database")
+
         -- Rebuild graph if requested
         if msg.RebuildGraph and Components.graph then
+          Logger.info("Rebuilding graph")
+
+          -- This is the key fix: use the proper function to rebuild the graph
           Init.buildGraph(Components, function(success, err)
             if not success then
               msg.reply({
+                Action = msg.Action .. "Response",
                 Status = "Partial",
                 Error = "Data saved but graph rebuild failed: " .. tostring(err),
                 Pools = tostring(#results.pools),
@@ -358,6 +511,7 @@ function DexHandlers.handleCollectData(msg)
             end
 
             msg.reply({
+              Action = msg.Action .. "Response",
               Status = "Success",
               Pools = tostring(#results.pools),
               Tokens = tostring(#results.tokens),
@@ -366,7 +520,10 @@ function DexHandlers.handleCollectData(msg)
             })
           end)
         else
+          -- No graph rebuild requested
+          Logger.info("Skipping graph build")
           msg.reply({
+            Action = msg.Action .. "Response",
             Status = "Success",
             Pools = tostring(#results.pools),
             Tokens = tostring(#results.tokens),
@@ -377,6 +534,7 @@ function DexHandlers.handleCollectData(msg)
       end)
     else
       msg.reply({
+        Action = msg.Action .. "Response",
         Status = "Success",
         Pools = tostring(#results.pools),
         Tokens = tostring(#results.tokens),
