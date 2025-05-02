@@ -16,6 +16,7 @@ function DexHandlers.handleError(msg, error, code)
   Logger.error("Error in handler", { error = error, code = errorCode })
 
   msg.reply({
+    Action = msg.Action .. "Response",
     Status = "Error",
     Error = tostring(error),
     Code = tostring(errorCode)
@@ -44,6 +45,7 @@ function DexHandlers.handleStatus(msg)
   end
 
   msg.reply({
+    Action = msg.Action .. "Response",
     Status = "Success",
     Version = Constants.VERSION,
     AppName = Constants.APP_NAME,
@@ -66,6 +68,7 @@ function DexHandlers.handleTokenList(msg)
   local tokens = TokenRepository.searchTokens(Components.collector.db, query)
 
   msg.reply({
+    Action = msg.Action .. "Response",
     Status = "Success",
     Tokens = Utils.jsonEncode(tokens),
     Count = tostring(#tokens),
@@ -90,6 +93,7 @@ function DexHandlers.handlePoolList(msg)
   end
 
   msg.reply({
+    Action = msg.Action .. "Response",
     Status = "Success",
     Pools = Utils.jsonEncode(pools),
     Count = tostring(#pools),
@@ -138,6 +142,7 @@ function DexHandlers.handleQuote(msg)
       end
 
       msg.reply({
+        Action = msg.Action .. "Response",
         Status = "Success",
         Quote = tostring(quoteResults.best_quote),
         AlternativeQuotes = Utils.jsonEncode(quoteResults.quotes),
@@ -166,6 +171,7 @@ function DexHandlers.handleFindPaths(msg)
   local paths = Components.pathFinder.findAllPaths(sourceTokenId, targetTokenId, maxHops)
 
   msg.reply({
+    Action = msg.Action .. "Response",
     Status = "Success",
     Paths = Utils.jsonEncode(paths),
     Count = tostring(#paths),
@@ -198,6 +204,7 @@ function DexHandlers.handleFindRoute(msg)
     end
 
     msg.reply({
+      Action = msg.Action .. "Response",
       Status = "Success",
       Route = Utils.jsonEncode(result),
       SourceToken = sourceTokenId,
@@ -240,6 +247,7 @@ function DexHandlers.handleCalculateOutput(msg)
     end
 
     msg.reply({
+      Action = msg.Action .. "Response",
       Status = "Success",
       Result = Utils.jsonEncode(result)
     })
@@ -259,6 +267,7 @@ function DexHandlers.handleFindArbitrage(msg)
   Components.pathFinder.findArbitrageOpportunities(startTokenId, inputAmount, function(result, err)
     if err then
       msg.reply({
+        Action = msg.Action .. "Response",
         Status = "Partial",
         Error = tostring(err),
         Opportunities = Utils.jsonEncode(result.opportunities or {})
@@ -267,6 +276,7 @@ function DexHandlers.handleFindArbitrage(msg)
     end
 
     msg.reply({
+      Action = msg.Action .. "Response",
       Status = "Success",
       Opportunities = Utils.jsonEncode(result.opportunities),
       Count = tostring(#(result.opportunities)),
@@ -290,6 +300,7 @@ function DexHandlers.handleRefreshReserves(msg)
     -- Refresh specific pools
     Components.poller.pollMultiplePools(poolIds, forceFresh, function(results)
       msg.reply({
+        Action = msg.Action .. "Response",
         Status = "Success",
         Refreshed = tostring(Utils.tableSize(results.reserves)),
         Failed = tostring(Utils.tableSize(results.errors)),
@@ -303,6 +314,7 @@ function DexHandlers.handleRefreshReserves(msg)
 
     Components.poller.refreshStaleReserves(maxAge, batchSize, function(result)
       msg.reply({
+        Action = msg.Action .. "Response",
         Status = "Success",
         Refreshed = tostring(result.refreshed),
         Failed = tostring(result.failed),
@@ -333,6 +345,7 @@ function DexHandlers.handleCollectData(msg)
       Components.collector.saveToDatabase(results, function(success, err)
         if not success then
           msg.reply({
+            Action = msg.Action .. "Response",
             Status = "Partial",
             Error = "Data collected but save failed: " .. tostring(err),
             Pools = tostring(#results.pools),
@@ -353,6 +366,7 @@ function DexHandlers.handleCollectData(msg)
           Init.buildGraph(Components, function(success, err)
             if not success then
               msg.reply({
+                Action = msg.Action .. "Response",
                 Status = "Partial",
                 Error = "Data saved but graph rebuild failed: " .. tostring(err),
                 Pools = tostring(#results.pools),
@@ -363,6 +377,7 @@ function DexHandlers.handleCollectData(msg)
             end
 
             msg.reply({
+              Action = msg.Action .. "Response",
               Status = "Success",
               Pools = tostring(#results.pools),
               Tokens = tostring(#results.tokens),
@@ -374,6 +389,7 @@ function DexHandlers.handleCollectData(msg)
           -- No graph rebuild requested
           Logger.info("Skipping graph build")
           msg.reply({
+            Action = msg.Action .. "Response",
             Status = "Success",
             Pools = tostring(#results.pools),
             Tokens = tostring(#results.tokens),
@@ -384,6 +400,7 @@ function DexHandlers.handleCollectData(msg)
       end)
     else
       msg.reply({
+        Action = msg.Action .. "Response",
         Status = "Success",
         Pools = tostring(#results.pools),
         Tokens = tostring(#results.tokens),
