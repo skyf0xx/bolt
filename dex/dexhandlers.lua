@@ -30,7 +30,13 @@ function DexHandlers.handleUpdateTokenInfo(msg)
     return
   end
 
-  local batchSize = msg.BatchSize or 10 -- Process tokens in manageable batches
+  local SqlAccessor = require('dex.utils.sql_accessor')
+  local Utils = require('dex.utils.utils')
+  local TokenRepository = require('dex.db.token_repository')
+  local Logger = require('dex.utils.logger')
+  Logger = Logger.createLogger("TokenUpdater")
+
+  local batchSize = msg.BatchSize or 10
   local forceUpdate = msg.ForceUpdate or false
 
   Logger.info("Starting token information update", { batchSize = batchSize, forceUpdate = forceUpdate })
@@ -58,6 +64,49 @@ function DexHandlers.handleUpdateTokenInfo(msg)
 
   Logger.info("Updating token information", { count = pendingTokens, total = totalTokens })
 
+  -- Function to update a token safely
+  local function updateTokenSafely(db, token, newInfo)
+    local currentTime = os.time()
+
+    -- Prepare new token data
+    local updatedToken = {
+      id = token.id,
+      symbol = newInfo.Ticker or token.symbol,
+      name = newInfo.Name or token.name,
+      decimals = tonumber(newInfo.Denomination) or token.decimals,
+      logo_url = newInfo.Logo or token.logo_url
+    }
+
+    -- Check if there are actual changes
+    local hasChanges =
+        updatedToken.symbol ~= token.symbol or
+        updatedToken.name ~= token.name or
+        updatedToken.decimals ~= token.decimals or
+        updatedToken.logo_url ~= token.logo_url
+
+    if not hasChanges and not forceUpdate then
+      return true, "No changes required"
+    end
+
+    -- Directly use SqlAccessor to execute the update
+    local sql = [[
+      UPDATE tokens
+      SET symbol = ?, name = ?, decimals = ?, logo_url = ?, updated_at = ?
+      WHERE id = ?
+    ]]
+
+    local params = {
+      updatedToken.symbol,
+      updatedToken.name,
+      updatedToken.decimals,
+      updatedToken.logo_url,
+      currentTime,
+      token.id
+    }
+
+    return SqlAccessor.execute(db, sql, params)
+  end
+
   -- Process tokens in the current batch
   for i = 1, pendingTokens do
     local token = tokens[i]
@@ -74,37 +123,20 @@ function DexHandlers.handleUpdateTokenInfo(msg)
         errors[token.id] = response.Error
         Logger.warn("Failed to get token info", { id = token.id, error = response.Error })
       else
-        -- Skip update if no new information and not forcing update
-        if not forceUpdate and
-            not response.Name and
-            not response.Ticker and
-            not response.Denomination and
-            not response.Logo then
-          Logger.debug("No new information for token", { id = token.id })
-        else
-          -- Update token with received information
-          local updatedToken = {
+        -- Update token with received information
+        local success, err = updateTokenSafely(Components.collector.db, token, response)
+
+        if success then
+          updatedTokens = updatedTokens + 1
+          Logger.info("Updated token info", {
             id = token.id,
-            symbol = response.Ticker or token.symbol,
-            name = response.Name or token.name,
-            decimals = tonumber(response.Denomination) or token.decimals,
-            logo_url = response.Logo or token.logo_url
-          }
-
-          local success, err = TokenRepository.addOrUpdateToken(Components.collector.db, updatedToken)
-
-          if success then
-            updatedTokens = updatedTokens + 1
-            Logger.info("Updated token info", {
-              id = token.id,
-              symbol = updatedToken.symbol,
-              name = updatedToken.name
-            })
-          else
-            failedTokens = failedTokens + 1
-            errors[token.id] = err
-            Logger.error("Failed to update token info", { id = token.id, error = err })
-          end
+            symbol = response.Ticker,
+            name = response.Name
+          })
+        else
+          failedTokens = failedTokens + 1
+          errors[token.id] = err
+          Logger.error("Failed to update token info", { id = token.id, error = err })
         end
       end
 
