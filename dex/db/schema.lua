@@ -1,12 +1,12 @@
 local sqlite3 = require('lsqlite3')
-local Constants = require('dex.utils.constants')
 local Logger = require('dex.utils.logger')
+local SqlAccessor = require('dex.utils.sql_accessor') -- Add this new helper
 Logger = Logger.createLogger("Schema")
 
 local Schema = {}
 
 -- Initialize database
-function Schema.init(dbPath)
+function Schema.init()
   -- Check if we already have a valid db connection
   if Schema.db and pcall(function() return Schema.db:exec("SELECT 1") == sqlite3.OK end) then
     Logger.info("Reusing existing database connection")
@@ -15,14 +15,8 @@ function Schema.init(dbPath)
 
   local db
 
-  if not dbPath or dbPath == ":memory:" then
-    Logger.info("Opening in-memory database")
-    db = sqlite3.open_memory()
-  else
-    dbPath = dbPath or Constants.DB.FILENAME
-    Logger.info("Opening database file", dbPath)
-    db = sqlite3.open(dbPath)
-  end
+  Logger.info("Opening in-memory database")
+  db = sqlite3.open_memory()
 
   if not db then
     Logger.error("Failed to open database")
@@ -154,58 +148,22 @@ end
 
 -- Helper function to execute prepared statements with error handling
 function Schema.execute(db, sql, params)
-  local stmt = db:prepare(sql)
-
-  if not stmt then
-    Logger.error("Failed to prepare statement", db:errmsg())
-    return false, "Failed to prepare statement: " .. db:errmsg()
-  end
-
-  if params then
-    for i, v in ipairs(params) do
-      stmt:bind(i, v)
-    end
-  end
-
-  local result = stmt:step()
-  stmt:finalize()
-
-  if result ~= sqlite3.DONE then
-    Logger.error("Failed to execute statement", db:errmsg())
-    return false, "Failed to execute statement: " .. db:errmsg()
-  end
-
-  return true
+  return SqlAccessor.execute(db, sql, params)
 end
 
 -- Helper function to query data with error handling
 function Schema.query(db, sql, params)
-  local stmt = db:prepare(sql)
+  return SqlAccessor.query(db, sql, params)
+end
 
-  if not stmt then
-    Logger.error("Failed to prepare query", db:errmsg())
-    return nil, "Failed to prepare query: " .. db:errmsg()
-  end
+-- Helper function to query data and get a single row
+function Schema.query_row(db, sql, params)
+  return SqlAccessor.query_row(db, sql, params)
+end
 
-  if params then
-    for i, v in ipairs(params) do
-      stmt:bind(i, v)
-    end
-  end
-
-  local results = {}
-  while stmt:step() == sqlite3.ROW do
-    local row = {}
-    for i = 0, stmt:columns() - 1 do
-      local name = stmt:column_name(i)
-      local value = stmt:column_value(i)
-      row[name] = value
-    end
-    table.insert(results, row)
-  end
-
-  stmt:finalize()
-  return results
+-- Helper function to query data and get a single value
+function Schema.query_value(db, sql, params)
+  return SqlAccessor.query_value(db, sql, params)
 end
 
 -- Reset database (for testing)

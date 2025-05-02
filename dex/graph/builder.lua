@@ -1,7 +1,6 @@
 local Constants = require('dex.utils.constants')
 local Logger = require('dex.utils.logger')
 Logger = Logger.createLogger("GraphBuilder")
-local Utils = require('dex.utils.utils')
 local Graph = require('dex.graph.graph')
 local TokenRepository = require('dex.db.token_repository')
 local PoolRepository = require('dex.db.pool_repository')

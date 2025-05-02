@@ -221,7 +221,7 @@ function PathFinder.findArbitrageOpportunities(startTokenId, inputAmount, callba
   end
 
   -- Find cycles that start and end at the same token
-  local cycles = PathFinder.graph.findCycles(startTokenId)
+  local cycles = PathFinder.graph:findCycles(startTokenId)
 
   if #cycles == 0 then
     callback({ opportunities = {} }, "No cycles found")
@@ -289,7 +289,7 @@ function PathFinder.findBestRoute(sourceTokenId, targetTokenId, inputAmount, cal
   end
 
   -- Direct pool check first (fastest path)
-  local directPools = PathFinder.graph.getDirectPools(sourceTokenId, targetTokenId)
+  local directPools = PathFinder.graph:getDirectPools(sourceTokenId, targetTokenId)
 
   if #directPools > 0 then
     Logger.info("Found direct connection", { poolCount = #directPools })
@@ -404,8 +404,8 @@ function PathFinder.generateQuote(path, inputAmount, tokenDecimals, callback)
     local targetTokenId = path[#path].to
 
     -- Get token information
-    local sourceToken = PathFinder.graph.getToken(sourceTokenId)
-    local targetToken = PathFinder.graph.getToken(targetTokenId)
+    local sourceToken = PathFinder.graph:getToken(sourceTokenId)
+    local targetToken = PathFinder.graph:getToken(targetTokenId)
 
     local sourceDecimals = sourceToken and sourceToken.decimals or tokenDecimals.source or Constants.NUMERIC.DECIMALS
     local targetDecimals = targetToken and targetToken.decimals or tokenDecimals.target or Constants.NUMERIC.DECIMALS
@@ -538,9 +538,9 @@ function PathFinder.describePathRoute(path)
   local description = {}
 
   for i, step in ipairs(path) do
-    local sourceToken = PathFinder.graph.getToken(step.from)
-    local targetToken = PathFinder.graph.getToken(step.to)
-    local pool = PathFinder.graph.getPool(step.pool_id)
+    local sourceToken = PathFinder.graph:getToken(step.from)
+    local targetToken = PathFinder.graph:getToken(step.to)
+    local pool = PathFinder.graph:getPool(step.pool_id)
 
     local sourceSymbol = sourceToken and sourceToken.symbol or step.from:sub(1, 8)
     local targetSymbol = targetToken and targetToken.symbol or step.to:sub(1, 8)
