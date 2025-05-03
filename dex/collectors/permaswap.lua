@@ -51,6 +51,12 @@ end
 function Permaswap.calculateOutputAmount(amountIn, reserveIn, reserveOut, feeBps)
   -- Using Permaswap's formula:
   -- amountOut = (amountIn * (10000 - fee) * reserveOut) / ((10000 * reserveIn) + (amountIn * (10000 - fee)))
+  Logger.debug("Calculating output amount", {
+    amountIn = amountIn,
+    reserveIn = reserveIn,
+    reserveOut = reserveOut,
+    feeBps = feeBps
+  })
 
   return BigDecimal.getOutputAmount(
     BigDecimal.new(amountIn),
