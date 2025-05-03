@@ -23,7 +23,7 @@ end
 function Poller.getReserves(poolId, forceFresh, callback)
   -- Check if reserves are being polled already for this pool
   if Poller.inProgressPolls[poolId] then
-    Logger.debug("Poll already in progress for pool", { pool = poolId })
+    Logger.info("Poll already in progress for pool", { pool = poolId })
     table.insert(Poller.inProgressPolls[poolId], callback)
     return
   end
