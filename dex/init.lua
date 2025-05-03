@@ -123,8 +123,21 @@ function Init.buildGraph(components, callback)
 
   Logger.info("Building graph", { pools = #pools, tokens = #tokens })
 
-  -- Build graph from pools and tokens
-  local success = graph:buildFromPools(pools, tokens)
+  -- Transform pools to have the expected structure
+  local transformedPools = {}
+  for _, pool in ipairs(pools) do
+    table.insert(transformedPools, {
+      id = pool.id,
+      source = pool.source,
+      token_a_id = pool.token_a.id,
+      token_b_id = pool.token_b.id,
+      fee_bps = pool.fee_bps,
+      status = pool.status
+    })
+  end
+
+  -- Build graph from transformed pools and tokens
+  local success = graph:buildFromPools(transformedPools, tokens)
 
   if success then
     Logger.info("Graph built successfully")

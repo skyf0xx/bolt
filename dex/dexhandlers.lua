@@ -458,6 +458,34 @@ function DexHandlers.handleRefreshReserves(msg)
   end
 end
 
+-- Handler for rebuilding the graph
+function DexHandlers.handleBuildGraph(msg)
+  if not Components.collector or not Components.collector.db then
+    DexHandlers.handleError(msg, "Database not initialized", "ERR_DB_NOT_INITIALIZED")
+    return
+  end
+
+  Init.buildGraph(Components, function(success, err)
+    if success then
+      msg.reply({
+        Action = msg.Action .. "Response",
+        Status = "Success",
+        Graph = Utils.jsonEncode({
+          Tokens = Components.graph and Components.graph.tokenCount or 0,
+          Pools = Components.graph and Components.graph.edgeCount or 0,
+          Sources = Components.graph and Components.graph.sources or {}
+        })
+      })
+    else
+      msg.reply({
+        Action = msg.Action .. "Response",
+        Status = "Error",
+        Error = err or "Failed to build graph"
+      })
+    end
+  end)
+end
+
 -- Handler for data collection
 function DexHandlers.handleCollectData(msg)
   if not Components.collector then
