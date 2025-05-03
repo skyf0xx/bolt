@@ -28,9 +28,9 @@ Handlers.add("PoolList",
   Handlers.utils.hasMatchingTag("Action", "PoolList"),
   DexHandlers.handlePoolList)
 
-Handlers.add("Quote",
-  Handlers.utils.hasMatchingTag("Action", "Quote"),
-  DexHandlers.handleQuote)
+Handlers.add("GetQuote",
+  Handlers.utils.hasMatchingTag("Action", "GetQuote"),
+  DexHandlers.handleGetQuote)
 
 Handlers.add("FindPaths",
   Handlers.utils.hasMatchingTag("Action", "FindPaths"),

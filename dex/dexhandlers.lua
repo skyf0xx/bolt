@@ -236,21 +236,21 @@ function DexHandlers.handlePoolList(msg)
 end
 
 -- Handler for quote requests
-function DexHandlers.handleQuote(msg)
+function DexHandlers.handleGetQuote(msg)
   if not Components.graph or not Components.graph.initialized then
     DexHandlers.handleError(msg, "Graph not initialized", "ERR_GRAPH_NOT_INITIALIZED")
     return
   end
 
   -- Validate request
-  if not msg.SourceToken or not msg.TargetToken or not msg.Amount then
+  if not msg.SourceToken or not msg.TargetToken or not msg.AmountIn then
     DexHandlers.handleError(msg, "Missing required parameters: SourceToken, TargetToken, Amount", "ERR_INVALID_PARAMS")
     return
   end
 
   local sourceTokenId = msg.SourceToken
   local targetTokenId = msg.TargetToken
-  local amount = msg.Amount
+  local amountIn = msg.AmountIn
   local options = {
     maxHops = msg.MaxHops or Constants.PATH.MAX_PATH_LENGTH,
     maxPaths = msg.MaxPaths or Constants.PATH.MAX_PATHS_TO_RETURN
@@ -259,14 +259,14 @@ function DexHandlers.handleQuote(msg)
   Logger.info("Processing quote request", {
     source = sourceTokenId,
     target = targetTokenId,
-    amount = amount
+    amountIn = amountIn
   })
 
   -- Find the best quote
   Components.quoteGenerator.findBestQuote(
     sourceTokenId,
     targetTokenId,
-    amount,
+    amountIn,
     Components.pathFinder,
     options,
     function(quoteResults, err)
