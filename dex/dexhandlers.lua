@@ -322,16 +322,16 @@ function DexHandlers.handleFindRoute(msg)
     return
   end
 
-  if not msg.SourceToken or not msg.TargetToken or not msg.Amount then
+  if not msg.SourceToken or not msg.TargetToken or not msg.AmountIn then
     DexHandlers.handleError(msg, "Missing required parameters: SourceToken, TargetToken, Amount", "ERR_INVALID_PARAMS")
     return
   end
 
   local sourceTokenId = msg.SourceToken
   local targetTokenId = msg.TargetToken
-  local amount = msg.Amount
+  local amountIn = msg.AmountIn
 
-  Components.pathFinder.findBestRoute(sourceTokenId, targetTokenId, amount, function(result, err)
+  Components.pathFinder.findBestRoute(sourceTokenId, targetTokenId, amountIn, function(result, err)
     if not result then
       DexHandlers.handleError(msg, err or "No viable route found", Constants.ERROR.PATH_NOT_FOUND)
       return
@@ -343,7 +343,7 @@ function DexHandlers.handleFindRoute(msg)
       Route = Utils.jsonEncode(result),
       SourceToken = sourceTokenId,
       TargetToken = targetTokenId,
-      InputAmount = tostring(amount),
+      InputAmount = tostring(amountIn),
       OutputAmount = tostring(result.outputAmount)
     })
   end)
@@ -365,16 +365,16 @@ function DexHandlers.handleCalculateOutput(msg)
     return
   end
 
-  if not msg.PoolId or not msg.TokenIn or not msg.Amount then
+  if not msg.PoolId or not msg.TokenIn or not msg.AmountIn then
     DexHandlers.handleError(msg, "Missing required parameters: PoolId, TokenIn, Amount", "ERR_INVALID_PARAMS")
     return
   end
 
   local poolId = msg.PoolId
   local tokenIn = msg.TokenIn
-  local amount = msg.Amount
+  local amountIn = msg.AmountIn
 
-  Components.calculator.calculateSwapOutput(poolId, tokenIn, amount, function(result, err)
+  Components.calculator.calculateSwapOutput(poolId, tokenIn, amountIn, function(result, err)
     if not result then
       DexHandlers.handleError(msg, err or "Calculation failed", Constants.ERROR.CALCULATION_FAILED)
       return
