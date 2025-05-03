@@ -111,48 +111,6 @@ function Botega.fetchFeePercentage(poolAddress, hasDiscount, callback)
   end)
 end
 
--- Calculate expected output amount for a swap in Botega
-function Botega.calculateOutputAmount(amountIn, reserveIn, reserveOut, feePercentage)
-  Logger.debug("Calculating output amount", {
-    amountIn = amountIn,
-    reserveIn = reserveIn,
-    reserveOut = reserveOut,
-    feePercentage = feePercentage
-  })
-
-  -- Convert inputs to BigDecimal
-  local bdAmountIn = BigDecimal.new(amountIn)
-  local bdReserveIn = BigDecimal.new(reserveIn)
-  local bdReserveOut = BigDecimal.new(reserveOut)
-
-  -- Convert fee percentage to basis points
-  local feeBps = math.floor(feePercentage * 100)
-  local bdFee = BigDecimal.new(feeBps)
-  local bdBpsMultiplier = BigDecimal.new(Constants.NUMERIC.BASIS_POINTS_MULTIPLIER)
-
-  -- Calculate fee factor: (10000 - fee)
-  local feeFactor = BigDecimal.subtract(bdBpsMultiplier, bdFee)
-
-  -- Calculate amount after fees
-  local amountInAfterFees = BigDecimal.multiply(bdAmountIn, feeFactor)
-  amountInAfterFees = BigDecimal.divide(amountInAfterFees, bdBpsMultiplier)
-
-  -- Calculate constant product k = reserveIn * reserveOut
-  local k = BigDecimal.multiply(bdReserveIn, bdReserveOut)
-
-  -- Calculate new reserve in after swap
-  local newReserveIn = BigDecimal.add(bdReserveIn, amountInAfterFees)
-
-  -- Calculate new reserve out based on constant product formula
-  local newReserveOut = BigDecimal.divide(k, newReserveIn)
-
-  -- Output amount is the difference in reserves
-  local amountOut = BigDecimal.subtract(bdReserveOut, newReserveOut)
-
-  Logger.debug("Output amount calculated", { result = amountOut.value })
-  return amountOut
-end
-
 -- Get expected output directly from Botega API
 function Botega.getSwapOutput(poolAddress, tokenIn, amountIn, userAddress, callback)
   Logger.debug("Getting swap output", {
@@ -167,7 +125,7 @@ function Botega.getSwapOutput(poolAddress, tokenIn, amountIn, userAddress, callb
     Tags = {
       Token = tokenIn,
       Quantity = tostring(amountIn),
-      Swapper = userAddress or "user_address" -- Default value
+      Swapper = userAddress or "0000000000000000000000000000000000000000000" -- Default value required by API
     }
   }).onReply(function(response)
     if response.Error then
