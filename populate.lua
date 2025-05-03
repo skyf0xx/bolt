@@ -43,5 +43,10 @@ Handlers.add('update-token-data', Handlers.utils.hasMatchingTag('Action', 'Token
   ao.send({
     Target = BOLT_PROTOCOL,
     Action = "UpdateTokenInfo",
-  })
+  }).onReply(function(response)
+    ao.send({
+      Target = BOLT_PROTOCOL,
+      Action = "BuildGraph",
+    })
+  end)
 end)
