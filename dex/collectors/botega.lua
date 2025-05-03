@@ -113,36 +113,43 @@ end
 
 -- Calculate expected output amount for a swap in Botega
 function Botega.calculateOutputAmount(amountIn, reserveIn, reserveOut, feePercentage)
-  -- Using Botega's two-step formula:
-  -- Step 1: Fee deduction
-  local feeMultiplier = 1 - (feePercentage / 100)
-  local amountInAfterFees = BigDecimal.multiply(
-    BigDecimal.new(amountIn),
-    BigDecimal.new(tostring(feeMultiplier * Constants.NUMERIC.BASIS_POINTS_MULTIPLIER))
-  )
-  amountInAfterFees = BigDecimal.divide(
-    amountInAfterFees,
-    BigDecimal.new(Constants.NUMERIC.BASIS_POINTS_MULTIPLIER)
-  )
+  Logger.debug("Calculating output amount", {
+    amountIn = amountIn,
+    reserveIn = reserveIn,
+    reserveOut = reserveOut,
+    feePercentage = feePercentage
+  })
 
-  -- Step 2: Output calculation
-  local k = BigDecimal.multiply(
-    BigDecimal.new(reserveIn),
-    BigDecimal.new(reserveOut)
-  )
+  -- Convert inputs to BigDecimal
+  local bdAmountIn = BigDecimal.new(amountIn)
+  local bdReserveIn = BigDecimal.new(reserveIn)
+  local bdReserveOut = BigDecimal.new(reserveOut)
 
-  local newReserveIn = BigDecimal.add(
-    BigDecimal.new(reserveIn),
-    amountInAfterFees
-  )
+  -- Convert fee percentage to basis points
+  local feeBps = math.floor(feePercentage * 100)
+  local bdFee = BigDecimal.new(feeBps)
+  local bdBpsMultiplier = BigDecimal.new(Constants.NUMERIC.BASIS_POINTS_MULTIPLIER)
 
+  -- Calculate fee factor: (10000 - fee)
+  local feeFactor = BigDecimal.subtract(bdBpsMultiplier, bdFee)
+
+  -- Calculate amount after fees
+  local amountInAfterFees = BigDecimal.multiply(bdAmountIn, feeFactor)
+  amountInAfterFees = BigDecimal.divide(amountInAfterFees, bdBpsMultiplier)
+
+  -- Calculate constant product k = reserveIn * reserveOut
+  local k = BigDecimal.multiply(bdReserveIn, bdReserveOut)
+
+  -- Calculate new reserve in after swap
+  local newReserveIn = BigDecimal.add(bdReserveIn, amountInAfterFees)
+
+  -- Calculate new reserve out based on constant product formula
   local newReserveOut = BigDecimal.divide(k, newReserveIn)
 
-  local amountOut = BigDecimal.subtract(
-    BigDecimal.new(reserveOut),
-    newReserveOut
-  )
+  -- Output amount is the difference in reserves
+  local amountOut = BigDecimal.subtract(bdReserveOut, newReserveOut)
 
+  Logger.debug("Output amount calculated", { result = amountOut.value })
   return amountOut
 end
 
