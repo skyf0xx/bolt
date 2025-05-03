@@ -454,11 +454,109 @@ function PathFinder.generateQuote(path, inputAmount, tokenDecimals, callback)
   end)
 end
 
+-- Find direct swaps between two tokens
+function PathFinder.findDirectSwaps(sourceTokenId, targetTokenId, inputAmount, callback)
+  Logger.debug("Finding direct swaps", { source = sourceTokenId, target = targetTokenId, amount = inputAmount })
+
+  -- Get direct connections between tokens
+  local directPools = PathFinder.graph:getDirectPools(sourceTokenId, targetTokenId)
+
+  if #directPools == 0 then
+    Logger.debug("No direct pools found")
+    callback(nil)
+    return
+  end
+
+  Logger.info("Found direct connections", { poolCount = #directPools })
+
+  -- Create simple paths for all direct pools
+  local paths = {}
+  for _, pool in ipairs(directPools) do
+    table.insert(paths, {
+      {
+        from = sourceTokenId,
+        to = targetTokenId,
+        pool_id = pool.id,
+        source = pool.source,
+        fee_bps = pool.fee_bps
+      }
+    })
+  end
+
+  -- Calculate output for each direct path
+  local pendingPaths = #paths
+  local pathResults = {}
+
+  for i, path in ipairs(paths) do
+    Collector.calculatePathOutput(path, inputAmount, function(result, err)
+      pendingPaths = pendingPaths - 1
+
+      if result then
+        pathResults[i] = {
+          path = path,
+          totalFee = path[1].fee_bps,
+          inputAmount = inputAmount,
+          outputAmount = result.outputAmount,
+          steps = result.steps
+        }
+      else
+        Logger.warn("Direct path calculation failed", {
+          poolId = path[1].pool_id,
+          error = err
+        })
+      end
+
+      if pendingPaths == 0 then
+        -- Sort by output amount (descending)
+        table.sort(pathResults, function(a, b)
+          return BigDecimal.new(a.outputAmount).value > BigDecimal.new(b.outputAmount).value
+        end)
+
+        if #pathResults > 0 then
+          callback({
+            paths = pathResults,
+            bestPath = pathResults[1],
+            isDirect = true
+          })
+        else
+          Logger.warn("All direct path calculations failed")
+          callback(nil)
+        end
+      end
+    end)
+  end
+end
+
 -- Find paths for swapping a specific amount of token for maximum output
 function PathFinder.findOptimalSwap(sourceTokenId, targetTokenId, inputAmount, options, callback)
   options = options or {}
   local maxHops = options.maxHops or Constants.PATH.MAX_PATH_LENGTH
   local maxPaths = options.maxPaths or Constants.PATH.MAX_PATHS_TO_RETURN
+
+  -- First try to find direct swaps
+  PathFinder.findDirectSwaps(sourceTokenId, targetTokenId, inputAmount, function(directResults)
+    if directResults then
+      Logger.info("Using direct swap path", {
+        outputAmount = directResults.bestPath.outputAmount,
+        poolId = directResults.bestPath.path[1].pool_id
+      })
+      callback(directResults)
+      return
+    end
+
+    -- If no direct paths, try multi-hop paths
+    Logger.debug("Falling back to multi-hop paths")
+    local paths = PathFinder.findAllPaths(sourceTokenId, targetTokenId, maxHops)
+
+    if #paths == 0 then
+      callback({
+        paths = {},
+        bestPath = nil,
+        error = "No paths found between tokens"
+      })
+      return
+    end
+  end)
 
   -- Find all viable paths
   local paths = PathFinder.findAllPaths(sourceTokenId, targetTokenId, maxHops)
