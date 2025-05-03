@@ -47,25 +47,6 @@ function Permaswap.fetchReserves(poolAddress, callback)
   end)
 end
 
--- Calculate expected output amount for a swap in Permaswap
-function Permaswap.calculateOutputAmount(amountIn, reserveIn, reserveOut, feeBps)
-  -- Using Permaswap's formula:
-  -- amountOut = (amountIn * (10000 - fee) * reserveOut) / ((10000 * reserveIn) + (amountIn * (10000 - fee)))
-  Logger.debug("Calculating output amount", {
-    amountIn = amountIn,
-    reserveIn = reserveIn,
-    reserveOut = reserveOut,
-    feeBps = feeBps
-  })
-
-  return BigDecimal.getOutputAmount(
-    BigDecimal.new(amountIn),
-    BigDecimal.new(reserveIn),
-    BigDecimal.new(reserveOut),
-    feeBps
-  )
-end
-
 -- Get expected output directly from Permaswap API
 function Permaswap.getAmountOut(poolAddress, tokenIn, amountIn, callback)
   Logger.debug("Getting amount out", {

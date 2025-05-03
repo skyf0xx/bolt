@@ -397,69 +397,55 @@ function Collector.calculatePathOutput(path, inputAmount, callback)
       return
     end
 
-    -- Get reserves
-    local reserves = PoolRepository.getReserves(Collector.db, poolId)
-    if not reserves then
-      callback(nil, "Reserves not found for pool: " .. poolId)
-      return
-    end
-
-    -- Determine which reserve corresponds to input token
-    local reserveIn, reserveOut
-    if tokenIn == pool.token_a_id then
-      reserveIn = reserves.reserve_a
-      reserveOut = reserves.reserve_b
-    else
-      reserveIn = reserves.reserve_b
-      reserveOut = reserves.reserve_a
-    end
-
     -- Calculate output amount based on pool source
     if pool.source == Constants.SOURCE.PERMASWAP then
-      -- Use Permaswap formula
-      local outputAmount = Permaswap.calculateOutputAmount(
-        currentInput,
-        reserveIn,
-        reserveOut,
-        pool.fee_bps
-      )
+      -- Use Permaswap API instead of formula
+      Permaswap.getAmountOut(poolId, tokenIn, currentInput, function(response, err)
+        if err or not response then
+          callback(nil, err or "Failed to get output amount from Permaswap")
+          return
+        end
 
-      -- Add step to result
-      table.insert(result.steps, {
-        pool_id = poolId,
-        source = pool.source,
-        token_in = tokenIn,
-        token_out = tokenOut,
-        amount_in = currentInput,
-        amount_out = outputAmount.value,
-        fee_bps = pool.fee_bps
-      })
+        local outputAmount = response.amountOut
 
-      -- Process next step
-      processStep(index + 1, outputAmount.value)
+        -- Add step to result
+        table.insert(result.steps, {
+          pool_id = poolId,
+          source = pool.source,
+          token_in = tokenIn,
+          token_out = tokenOut,
+          amount_in = currentInput,
+          amount_out = outputAmount,
+          fee_bps = pool.fee_bps
+        })
+
+        -- Process next step
+        processStep(index + 1, outputAmount)
+      end)
     elseif pool.source == Constants.SOURCE.BOTEGA then
-      -- Convert fee from basis points to percentage for Botega calculation
-      local feePercentage = pool.fee_bps / 100
-      local outputAmount = Botega.calculateOutputAmount(
-        currentInput,
-        reserveIn,
-        reserveOut,
-        feePercentage
-      )
+      -- Use Botega API instead of formula
+      Botega.getSwapOutput(poolId, tokenIn, currentInput, nil, function(response, err)
+        if err or not response then
+          callback(nil, err or "Failed to get swap output from Botega")
+          return
+        end
 
-      -- Add step to result
-      table.insert(result.steps, {
-        pool_id = poolId,
-        source = pool.source,
-        token_in = tokenIn,
-        token_out = tokenOut,
-        amount_in = currentInput,
-        amount_out = outputAmount.value,
-        fee_bps = pool.fee_bps
-      })
+        local outputAmount = response.amountOut
 
-      -- Process next step
-      processStep(index + 1, outputAmount.value)
+        -- Add step to result
+        table.insert(result.steps, {
+          pool_id = poolId,
+          source = pool.source,
+          token_in = tokenIn,
+          token_out = tokenOut,
+          amount_in = currentInput,
+          amount_out = outputAmount,
+          fee_bps = pool.fee_bps
+        })
+
+        -- Process next step
+        processStep(index + 1, outputAmount)
+      end)
     else
       callback(nil, "Unsupported pool source: " .. tostring(pool.source))
     end
