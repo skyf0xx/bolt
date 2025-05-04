@@ -199,35 +199,6 @@ function BotegaFormula.verifyTradeValidity(reserveIn, reserveOut, amountIn, amou
   }
 end
 
--- Calculate new reserves after a swap
-function BotegaFormula.calculateNewReserves(reserveIn, reserveOut, amountIn, feePercent)
-  -- Convert all values to BigDecimal
-  local bdReserveIn = BigDecimal.new(reserveIn)
-  local bdReserveOut = BigDecimal.new(reserveOut)
-  local bdAmountIn = BigDecimal.new(amountIn)
-  local bdFeePercent = BigDecimal.new(feePercent)
-  local bdHundred = BigDecimal.new('100')
-
-  -- Calculate fee adjustment factor
-  local feeAdjustment = BigDecimal.subtract(bdHundred, bdFeePercent)
-  local scaledAmount = BigDecimal.multiply(bdAmountIn, feeAdjustment)
-  local amountInAfterFees = BigDecimal.divide(scaledAmount, bdHundred)
-
-  -- Calculate amount out using formula
-  local amountOut = BotegaFormula.getOutputAmount(amountIn, reserveIn, reserveOut, feePercent)
-
-  -- Calculate new reserves
-  local newReserveIn = BigDecimal.add(bdReserveIn, amountInAfterFees)
-  local newReserveOut = BigDecimal.subtract(bdReserveOut, amountOut)
-
-  return {
-    newReserveIn = newReserveIn.value,
-    newReserveOut = newReserveOut.value,
-    amountOut = amountOut.value,
-    amountInAfterFees = amountInAfterFees.value
-  }
-end
-
 -- Convert fee from basis points to percentage for Botega calculations
 function BotegaFormula.bpsToPercentage(feeBps)
   return feeBps / 100
