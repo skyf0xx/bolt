@@ -455,6 +455,7 @@ function PathFinder.generateQuote(path, inputAmount, tokenDecimals, callback)
 end
 
 -- Find direct swaps between two tokens
+-- Find direct swaps between two tokens
 function PathFinder.findDirectSwaps(sourceTokenId, targetTokenId, inputAmount, callback)
   Logger.debug("Finding direct swaps", { source = sourceTokenId, target = targetTokenId, amount = inputAmount })
 
@@ -468,6 +469,22 @@ function PathFinder.findDirectSwaps(sourceTokenId, targetTokenId, inputAmount, c
   end
 
   Logger.info("Found direct connections", { poolCount = #directPools })
+
+  -- Sort pools by fee (ascending) - prioritize lower fee pools first
+  table.sort(directPools, function(a, b)
+    return a.fee_bps < b.fee_bps
+  end)
+
+  -- Limit to top N pools to reduce API calls
+  local maxDirectPools = 3 -- Adjust based on your preferences
+  if #directPools > maxDirectPools then
+    local limitedPools = {}
+    for i = 1, maxDirectPools do
+      table.insert(limitedPools, directPools[i])
+    end
+    directPools = limitedPools
+    Logger.debug("Limited direct pool evaluation", { limit = maxDirectPools })
+  end
 
   -- Create simple paths for all direct pools
   local paths = {}
@@ -544,7 +561,7 @@ function PathFinder.findOptimalSwap(sourceTokenId, targetTokenId, inputAmount, o
       return
     end
 
-    -- If no direct paths, try multi-hop paths
+    -- ONLY if no direct paths are found, process multi-hop paths
     Logger.debug("Falling back to multi-hop paths")
     local paths = PathFinder.findAllPaths(sourceTokenId, targetTokenId, maxHops)
 
@@ -556,75 +573,64 @@ function PathFinder.findOptimalSwap(sourceTokenId, targetTokenId, inputAmount, o
       })
       return
     end
+
+    -- Initial ranking based on fees
+    local rankedPaths = PathFinder.rankPathsByFee(paths)
+
+    -- Take top N paths for detailed analysis
+    local candidatePaths = {}
+    local maxCandidates = math.min(maxPaths, #rankedPaths)
+
+    for i = 1, maxCandidates do
+      table.insert(candidatePaths, rankedPaths[i])
+    end
+
+    -- Calculate output for each candidate path
+    local pendingPaths = #candidatePaths
+    local pathResults = {}
+
+    if pendingPaths == 0 then
+      callback({
+        paths = {},
+        bestPath = nil,
+        error = "No candidate paths available"
+      })
+      return
+    end
+
+    for i, candidate in ipairs(candidatePaths) do
+      Collector.calculatePathOutput(candidate.path, inputAmount, function(result, err)
+        pendingPaths = pendingPaths - 1
+
+        if result then
+          pathResults[i] = {
+            path = candidate.path,
+            totalFee = candidate.totalFee,
+            inputAmount = inputAmount,
+            outputAmount = result.outputAmount,
+            steps = result.steps
+          }
+        else
+          Logger.warn("Path calculation failed", { error = err })
+        end
+
+        -- Once all paths are processed, return the results
+        if pendingPaths == 0 then
+          -- Sort by output amount (descending)
+          table.sort(pathResults, function(a, b)
+            return BigDecimal.new(a.outputAmount).value > BigDecimal.new(b.outputAmount).value
+          end)
+
+          callback({
+            paths = pathResults,
+            bestPath = #pathResults > 0 and pathResults[1] or nil,
+            error = #pathResults == 0 and "All path calculations failed" or nil
+          })
+        end
+      end)
+    end
   end)
-
-  -- Find all viable paths
-  local paths = PathFinder.findAllPaths(sourceTokenId, targetTokenId, maxHops)
-
-  if #paths == 0 then
-    callback({
-      paths = {},
-      bestPath = nil,
-      error = "No paths found between tokens"
-    })
-    return
-  end
-
-  -- Initial ranking based on fees
-  local rankedPaths = PathFinder.rankPathsByFee(paths)
-
-  -- Take top N paths for detailed analysis
-  local candidatePaths = {}
-  local maxCandidates = math.min(maxPaths, #rankedPaths)
-
-  for i = 1, maxCandidates do
-    table.insert(candidatePaths, rankedPaths[i])
-  end
-
-  -- Calculate output for each candidate path
-  local pendingPaths = #candidatePaths
-  local pathResults = {}
-
-  if pendingPaths == 0 then
-    callback({
-      paths = {},
-      bestPath = nil,
-      error = "No candidate paths available"
-    })
-    return
-  end
-
-  for i, candidate in ipairs(candidatePaths) do
-    Collector.calculatePathOutput(candidate.path, inputAmount, function(result, err)
-      pendingPaths = pendingPaths - 1
-
-      if result then
-        pathResults[i] = {
-          path = candidate.path,
-          totalFee = candidate.totalFee,
-          inputAmount = inputAmount,
-          outputAmount = result.outputAmount,
-          steps = result.steps
-        }
-      else
-        Logger.warn("Path calculation failed", { error = err })
-      end
-
-      -- Once all paths are processed, return the results
-      if pendingPaths == 0 then
-        -- Sort by output amount (descending)
-        table.sort(pathResults, function(a, b)
-          return BigDecimal.new(a.outputAmount).value > BigDecimal.new(b.outputAmount).value
-        end)
-
-        callback({
-          paths = pathResults,
-          bestPath = #pathResults > 0 and pathResults[1] or nil,
-          error = #pathResults == 0 and "All path calculations failed" or nil
-        })
-      end
-    end)
-  end
+  -- Remove all code here that was outside the callback
 end
 
 -- Create a human-readable description of a path
