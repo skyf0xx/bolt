@@ -27,6 +27,7 @@ function Poller.getReserves(poolId, forceFresh, callback)
     table.insert(Poller.inProgressPolls[poolId], callback)
     return
   end
+  Logger.info("Getting reserves for:", { pool = poolId })
 
   -- Try to get from cache if not forcing fresh data
   if not forceFresh then
@@ -114,7 +115,7 @@ end
 function Poller.notifyCallbacks(poolId, reserves, error)
   local callbacks = Poller.inProgressPolls[poolId] or {}
   Poller.inProgressPolls[poolId] = nil
-
+  Logger.info("Cleared poll callbacks:", { pool = poolId })
   for _, callback in ipairs(callbacks) do
     callback(reserves, error)
   end
