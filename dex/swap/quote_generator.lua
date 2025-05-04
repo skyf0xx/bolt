@@ -4,16 +4,18 @@ local Logger = require('dex.utils.logger')
 Logger = Logger.createLogger("QuoteGenerator")
 
 local Utils = require('dex.utils.utils')
-local Calculator = require('dex.swap.calculator')
+-- Remove Calculator dependency and add Collector
+local Collector = require('dex.collectors.collector')
 local TokenRepository = require('dex.db.token_repository')
 local PoolRepository = require('dex.db.pool_repository')
 
 local QuoteGenerator = {}
 
 -- Initialize the quote generator with dependencies
-function QuoteGenerator.init(db, calculator)
+function QuoteGenerator.init(db, collector)
   QuoteGenerator.db = db
-  QuoteGenerator.calculator = calculator or Calculator.init(db)
+  -- Use collector instead of calculator
+  QuoteGenerator.collector = collector or Collector.init(db)
   Logger.info("Quote generator initialized")
   return QuoteGenerator
 end
@@ -41,8 +43,8 @@ function QuoteGenerator.generateQuote(path, inputAmount, callback)
     local sourceDecimals = tokenInfo and tokenInfo.source and tokenInfo.source.decimals or Constants.NUMERIC.DECIMALS
     local targetDecimals = tokenInfo and tokenInfo.target and tokenInfo.target.decimals or Constants.NUMERIC.DECIMALS
 
-    -- Calculate the output for the path
-    QuoteGenerator.calculator.calculatePathOutput(path, inputAmount, function(result, err)
+    -- Calculate the output for the path - CHANGED: using collector instead of calculator
+    QuoteGenerator.collector.calculatePathOutput(path, inputAmount, function(result, err)
       if not result then
         callback(nil, err or "Failed to calculate path output")
         return
@@ -50,11 +52,14 @@ function QuoteGenerator.generateQuote(path, inputAmount, callback)
 
       -- Format amounts for display
       local formattedInputAmount = Utils.formatTokenAmount(inputAmount, sourceDecimals)
-      local formattedOutputAmount = Utils.formatTokenAmount(result.output_amount, targetDecimals)
+      local formattedOutputAmount = Utils.formatTokenAmount(result.output_amount or result.outputAmount, targetDecimals)
+
+      -- Make sure we handle both property naming conventions
+      local outputAmount = result.output_amount or result.outputAmount
 
       -- Calculate execution price
       local executionPrice = BigDecimal.divide(
-        BigDecimal.fromTokenAmount(result.output_amount, targetDecimals),
+        BigDecimal.fromTokenAmount(outputAmount, targetDecimals),
         BigDecimal.fromTokenAmount(inputAmount, sourceDecimals)
       )
 
@@ -80,7 +85,7 @@ function QuoteGenerator.generateQuote(path, inputAmount, callback)
         source_token = tokenInfo and tokenInfo.source or { id = sourceTokenId },
         target_token = tokenInfo and tokenInfo.target or { id = targetTokenId },
         input_amount = inputAmount,
-        output_amount = result.output_amount,
+        output_amount = outputAmount,
         formatted_input = formattedInputAmount,
         formatted_output = formattedOutputAmount,
         execution_price = executionPrice.toDecimal(8),
@@ -100,7 +105,7 @@ function QuoteGenerator.generateQuote(path, inputAmount, callback)
 
       -- Add slippage-adjusted output amounts
       quote.minimum_received = QuoteGenerator.applySlippage(
-        result.output_amount,
+        outputAmount,
         Constants.NUMERIC.DEFAULT_SLIPPAGE_TOLERANCE
       )
 
@@ -126,7 +131,6 @@ function QuoteGenerator.applySlippage(amount, slippageBps)
   return BigDecimal.multiply(bdAmount, bdSlippageFactor).value
 end
 
--- Get token pair information by IDs
 -- Get token pair information by IDs
 function QuoteGenerator.getTokenPairInfo(sourceTokenId, targetTokenId, callback)
   if not QuoteGenerator.db then
@@ -171,7 +175,7 @@ function QuoteGenerator.generateRouteDescription(path, tokenInfo, steps)
   end
 
   for i, step in ipairs(path) do
-    local stepOutput = steps and steps[i] and steps[i].amount_out or "?"
+    local stepOutput = steps and steps[i] and (steps[i].amount_out or steps[i].amountOut) or "?"
     local sourceSymbol = tokenSymbols[step.from] or step.from:sub(1, 8)
     local targetSymbol = tokenSymbols[step.to] or step.to:sub(1, 8)
     local dexName = step.source:sub(1, 1):upper() .. step.source:sub(2) -- Capitalize first letter
