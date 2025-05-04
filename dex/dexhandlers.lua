@@ -358,36 +358,6 @@ function DexHandlers.handlePollingCycle(msg)
   Components.poller.executePollingCycle(msg)
 end
 
--- Handler for calculating swap output
-function DexHandlers.handleCalculateOutput(msg)
-  if not Components.calculator then
-    DexHandlers.handleError(msg, "Calculator not initialized", "ERR_CALCULATOR_NOT_INITIALIZED")
-    return
-  end
-
-  if not msg.PoolId or not msg.TokenIn or not msg.AmountIn then
-    DexHandlers.handleError(msg, "Missing required parameters: PoolId, TokenIn, Amount", "ERR_INVALID_PARAMS")
-    return
-  end
-
-  local poolId = msg.PoolId
-  local tokenIn = msg.TokenIn
-  local amountIn = msg.AmountIn
-
-  Components.calculator.calculateSwapOutput(poolId, tokenIn, amountIn, function(result, err)
-    if not result then
-      DexHandlers.handleError(msg, err or "Calculation failed", Constants.ERROR.CALCULATION_FAILED)
-      return
-    end
-
-    msg.reply({
-      Action = msg.Action .. "Response",
-      Status = "Success",
-      Result = Utils.jsonEncode(result)
-    })
-  end)
-end
-
 -- Handler for finding arbitrage opportunities
 function DexHandlers.handleFindArbitrage(msg)
   if not Components.pathFinder then

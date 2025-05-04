@@ -40,9 +40,6 @@ Handlers.add("FindRoute",
   Handlers.utils.hasMatchingTag("Action", "FindRoute"),
   DexHandlers.handleFindRoute)
 
-Handlers.add("CalculateOutput",
-  Handlers.utils.hasMatchingTag("Action", "CalculateOutput"),
-  DexHandlers.handleCalculateOutput)
 
 Handlers.add("FindArbitrage",
   Handlers.utils.hasMatchingTag("Action", "FindArbitrage"),

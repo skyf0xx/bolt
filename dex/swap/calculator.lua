@@ -7,6 +7,9 @@ local PermaswapFormula = require('dex.swap.permaswap_formula')
 local BotegaFormula = require('dex.swap.botega_formula')
 local PoolRepository = require('dex.db.pool_repository')
 local Poller = require('dex.reserve.poller')
+-- Add new dependencies
+local Permaswap = require('dex.collectors.permaswap')
+local Botega = require('dex.collectors.botega')
 
 local Calculator = {}
 
@@ -16,88 +19,6 @@ function Calculator.init(db, poller)
   Calculator.poller = poller or Poller.init(db)
   Logger.info("Swap calculator initialized")
   return Calculator
-end
-
--- Calculate output amount for a single swap
-function Calculator.calculateSwapOutput(poolId, tokenIn, amountIn, callback)
-  Logger.debug("Calculating swap output", {
-    pool = poolId,
-    tokenIn = tokenIn,
-    amountIn = amountIn
-  })
-
-  local pool = PoolRepository.getPool(Calculator.db, poolId)
-  if not pool then
-    callback(nil, Constants.ERROR.POOL_NOT_FOUND)
-    return
-  end
-
-  Calculator.poller.getReserves(poolId, false, function(reserves, err)
-    if not reserves then
-      callback(nil, err or Constants.ERROR.INSUFFICIENT_LIQUIDITY)
-      return
-    end
-
-    local reserveIn, reserveOut, tokenOut
-    if tokenIn == pool.token_a_id then
-      reserveIn = reserves.reserve_a
-      reserveOut = reserves.reserve_b
-      tokenOut = pool.token_b_id
-    elseif tokenIn == pool.token_b_id then
-      reserveIn = reserves.reserve_b
-      reserveOut = reserves.reserve_a
-      tokenOut = pool.token_a_id
-    else
-      callback(nil, Constants.ERROR.INVALID_TOKEN)
-      return
-    end
-
-    local bdAmountIn = BigDecimal.new(amountIn)
-    local bdReserveIn = BigDecimal.new(reserveIn)
-    local reserveRatioLimit = BigDecimal.new(Constants.NUMERIC.RESERVE_RATIO_LIMIT *
-      Constants.NUMERIC.BASIS_POINTS_MULTIPLIER)
-    local maxInput = BigDecimal.divide(BigDecimal.multiply(bdReserveIn, reserveRatioLimit),
-      BigDecimal.new(Constants.NUMERIC.BASIS_POINTS_MULTIPLIER))
-
-    if BigDecimal.gt(bdAmountIn, maxInput) then
-      callback(nil, "Input amount exceeds maximum allowed relative to pool reserves")
-      return
-    end
-
-    local outputAmount
-    if pool.source == Constants.SOURCE.PERMASWAP then
-      outputAmount = PermaswapFormula.getOutputAmount(amountIn, reserveIn, reserveOut, pool.fee_bps)
-    elseif pool.source == Constants.SOURCE.BOTEGA then
-      local feePercentage = pool.fee_bps / 100
-      outputAmount = BotegaFormula.getOutputAmount(amountIn, reserveIn, reserveOut, feePercentage)
-    else
-      callback(nil, "Unsupported pool source: " .. tostring(pool.source))
-      return
-    end
-
-    local priceImpactBps
-    if pool.source == Constants.SOURCE.PERMASWAP then
-      priceImpactBps = PermaswapFormula.calculatePriceImpactBps(amountIn, reserveIn, reserveOut)
-    else
-      local feePercentage = pool.fee_bps / 100
-      priceImpactBps = BotegaFormula.calculatePriceImpactBps(amountIn, reserveIn, reserveOut, feePercentage)
-    end
-
-    callback({
-      pool_id = poolId,
-      source = pool.source,
-      token_in = tokenIn,
-      token_out = tokenOut,
-      amount_in = amountIn,
-      amount_out = outputAmount.value,
-      fee_bps = pool.fee_bps,
-      price_impact_bps = priceImpactBps.value,
-      reserves = {
-        ['in'] = reserveIn,
-        ['out'] = reserveOut
-      }
-    })
-  end)
 end
 
 -- Calculate output amount for a multi-hop path
@@ -143,20 +64,70 @@ function Calculator.calculatePathOutput(path, inputAmount, callback)
       local tokenIn = step.from
       local tokenOut = step.to
 
-      Calculator.calculateSwapOutput(poolId, tokenIn, currentAmount, function(stepResult, err)
-        if not stepResult then
-          callback(nil, "Error calculating step " .. index .. ": " .. (err or "Unknown error"))
-          return
-        end
+      -- Get pool information
+      local pool = PoolRepository.getPool(Calculator.db, poolId)
+      if not pool then
+        callback(nil, "Error calculating step " .. index .. ": Pool not found")
+        return
+      end
 
-        table.insert(result.steps, stepResult)
+      -- Use Permaswap API for Permaswap pools
+      if pool.source == Constants.SOURCE.PERMASWAP then
+        Permaswap.getAmountOut(poolId, tokenIn, currentAmount, function(response, err)
+          if not response then
+            callback(nil, "Error calculating step " .. index .. ": " .. (err or "Unknown error"))
+            return
+          end
 
-        local stepFeeBps = stepResult.fee_bps
-        result.total_fee_bps = result.total_fee_bps + stepFeeBps -
-            (result.total_fee_bps * stepFeeBps / Constants.NUMERIC.BASIS_POINTS_MULTIPLIER)
+          local stepResult = {
+            pool_id = poolId,
+            source = pool.source,
+            token_in = tokenIn,
+            token_out = tokenOut,
+            amount_in = currentAmount,
+            amount_out = response.amountOut,
+            fee_bps = pool.fee_bps,
+            price_impact_bps = nil -- Could calculate this if needed
+          }
 
-        processStep(index + 1, stepResult.amount_out)
-      end)
+          table.insert(result.steps, stepResult)
+
+          local stepFeeBps = stepResult.fee_bps
+          result.total_fee_bps = result.total_fee_bps + stepFeeBps -
+              (result.total_fee_bps * stepFeeBps / Constants.NUMERIC.BASIS_POINTS_MULTIPLIER)
+
+          processStep(index + 1, stepResult.amount_out)
+        end)
+        -- Use Botega API for Botega pools
+      elseif pool.source == Constants.SOURCE.BOTEGA then
+        Botega.getSwapOutput(poolId, tokenIn, currentAmount, nil, function(response, err)
+          if not response then
+            callback(nil, "Error calculating step " .. index .. ": " .. (err or "Unknown error"))
+            return
+          end
+
+          local stepResult = {
+            pool_id = poolId,
+            source = pool.source,
+            token_in = tokenIn,
+            token_out = tokenOut,
+            amount_in = currentAmount,
+            amount_out = response.amountOut,
+            fee_bps = pool.fee_bps,
+            price_impact_bps = nil -- Could calculate this if needed
+          }
+
+          table.insert(result.steps, stepResult)
+
+          local stepFeeBps = stepResult.fee_bps
+          result.total_fee_bps = result.total_fee_bps + stepFeeBps -
+              (result.total_fee_bps * stepFeeBps / Constants.NUMERIC.BASIS_POINTS_MULTIPLIER)
+
+          processStep(index + 1, response.amountOut)
+        end)
+      else
+        callback(nil, "Unsupported pool source: " .. tostring(pool.source))
+      end
     end
 
     processStep(1, inputAmount)
