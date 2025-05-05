@@ -67,7 +67,7 @@ function Init.setupComponents(db, existingComponents)
 
   -- Initialize quote generator with existing calculator if available
   existingComponents.quoteGenerator = existingComponents.quoteGenerator or
-      QuoteGenerator.init(db, existingComponents.calculator)
+      QuoteGenerator.init(db, existingComponents.collector)
 
   -- Reuse existing graph or create a new one
   existingComponents.graph = existingComponents.graph or Graph.new()

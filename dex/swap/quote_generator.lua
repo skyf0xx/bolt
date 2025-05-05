@@ -4,8 +4,6 @@ local Logger = require('dex.utils.logger')
 Logger = Logger.createLogger("QuoteGenerator")
 
 local Utils = require('dex.utils.utils')
--- Remove Calculator dependency and add Collector
-local Collector = require('dex.collectors.collector')
 local TokenRepository = require('dex.db.token_repository')
 local PoolRepository = require('dex.db.pool_repository')
 
@@ -14,8 +12,7 @@ local QuoteGenerator = {}
 -- Initialize the quote generator with dependencies
 function QuoteGenerator.init(db, collector)
   QuoteGenerator.db = db
-  -- Use collector instead of calculator
-  QuoteGenerator.collector = collector or Collector.init(db)
+  QuoteGenerator.collector = collector
   Logger.info("Quote generator initialized")
   return QuoteGenerator
 end
@@ -43,7 +40,6 @@ function QuoteGenerator.generateQuote(path, inputAmount, callback)
     local sourceDecimals = tokenInfo and tokenInfo.source and tokenInfo.source.decimals or Constants.NUMERIC.DECIMALS
     local targetDecimals = tokenInfo and tokenInfo.target and tokenInfo.target.decimals or Constants.NUMERIC.DECIMALS
 
-    -- Calculate the output for the path - CHANGED: using collector instead of calculator
     QuoteGenerator.collector.calculatePathOutput(path, inputAmount, function(result, err)
       if not result then
         callback(nil, err or "Failed to calculate path output")
