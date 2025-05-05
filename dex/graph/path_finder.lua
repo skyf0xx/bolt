@@ -88,6 +88,26 @@ function PathFinder.findAllPaths(sourceTokenId, targetTokenId, maxHops)
   -- Start DFS from source token
   dfs(sourceTokenId, {}, 1)
 
+  -- Deduplicate paths based on the sequence of tokens and pools
+  local uniquePaths = {}
+  local seenPathSignatures = {}
+
+  for _, path in ipairs(paths) do
+    -- Create a signature of the path (token ids + pool ids sequence)
+    local pathSignature = ""
+    for _, step in ipairs(path) do
+      pathSignature = pathSignature .. step.from .. "-" .. step.to .. "-" .. step.pool_id .. ";"
+    end
+
+    -- Only add if we haven't seen this exact sequence
+    if not seenPathSignatures[pathSignature] then
+      seenPathSignatures[pathSignature] = true
+      table.insert(uniquePaths, path)
+    end
+  end
+
+  paths = uniquePaths
+
   -- Sort paths by length (shorter paths first)
   table.sort(paths, function(a, b)
     return #a < #b
@@ -102,6 +122,7 @@ function PathFinder.findAllPaths(sourceTokenId, targetTokenId, maxHops)
     paths = limitedPaths
   end
 
+  Logger.info("Found paths", { count = #paths, source = sourceTokenId, target = targetTokenId })
   return paths
 end
 
@@ -218,6 +239,20 @@ function PathFinder.findDirectSwaps(sourceTokenId, targetTokenId, inputAmount, c
   -- Get direct connections between tokens
   local directPools = PathFinder.graph:getDirectPools(sourceTokenId, targetTokenId)
 
+  -- De-duplicate pools by ID
+  local uniquePools = {}
+  local seenPoolIds = {}
+
+  for _, pool in ipairs(directPools) do
+    if not seenPoolIds[pool.id] then
+      seenPoolIds[pool.id] = true
+      table.insert(uniquePools, pool)
+    end
+  end
+
+  directPools = uniquePools
+
+  -- Remove debug prints
   if #directPools == 0 then
     Logger.debug("No direct pools found")
     callback(nil)
