@@ -48,6 +48,7 @@ function QuoteGenerator.generateQuote(path, inputAmount, callback, preCalculated
         steps = preCalculated.steps
       }
 
+
       -- Format amounts for display
       local formattedInputAmount = Utils.formatTokenAmount(inputAmount, sourceDecimals)
       local formattedOutputAmount = Utils.formatTokenAmount(result.output_amount or result.outputAmount, targetDecimals)
@@ -57,9 +58,11 @@ function QuoteGenerator.generateQuote(path, inputAmount, callback, preCalculated
 
       -- Calculate execution price
       local executionPrice = BigDecimal.divide(
-        BigDecimal.fromTokenAmount(outputAmount, targetDecimals),
-        BigDecimal.fromTokenAmount(inputAmount, sourceDecimals)
+        BigDecimal.new(outputAmount),
+        BigDecimal.new(inputAmount)
       )
+
+
 
       -- Extract sources used in the path
       local sources = {}
@@ -74,7 +77,7 @@ function QuoteGenerator.generateQuote(path, inputAmount, callback, preCalculated
       for _, step in ipairs(result.steps) do
         totalPriceImpactBps = totalPriceImpactBps + tonumber(step.price_impact_bps or 0)
       end
-      local avgPriceImpactBps = #result.steps > 0 and (totalPriceImpactBps / #result.steps) or 0
+      Logger.info("there")
 
       -- Generate the quote
       local quote = {
@@ -86,13 +89,6 @@ function QuoteGenerator.generateQuote(path, inputAmount, callback, preCalculated
         output_amount = outputAmount,
         formatted_input = formattedInputAmount,
         formatted_output = formattedOutputAmount,
-        execution_price = executionPrice.toDecimal(8),
-        price_impact_bps = avgPriceImpactBps,
-        price_impact_percent = Utils.bpsToDecimal(avgPriceImpactBps),
-        fee = {
-          bps = result.total_fee_bps,
-          percent = Utils.bpsToDecimal(result.total_fee_bps)
-        },
         route = {
           hops = #path,
           sources = sources
@@ -129,11 +125,10 @@ function QuoteGenerator.generateQuote(path, inputAmount, callback, preCalculated
 
         -- Make sure we handle both property naming conventions
         local outputAmount = result.output_amount or result.outputAmount
-
         -- Calculate execution price
         local executionPrice = BigDecimal.divide(
-          BigDecimal.fromTokenAmount(outputAmount, targetDecimals),
-          BigDecimal.fromTokenAmount(inputAmount, sourceDecimals)
+          BigDecimal.new(outputAmount),
+          BigDecimal.new(inputAmount)
         )
 
         -- Extract sources used in the path
@@ -149,7 +144,6 @@ function QuoteGenerator.generateQuote(path, inputAmount, callback, preCalculated
         for _, step in ipairs(result.steps) do
           totalPriceImpactBps = totalPriceImpactBps + tonumber(step.price_impact_bps or 0)
         end
-        local avgPriceImpactBps = #result.steps > 0 and (totalPriceImpactBps / #result.steps) or 0
 
         -- Generate the quote
         local quote = {
@@ -161,13 +155,7 @@ function QuoteGenerator.generateQuote(path, inputAmount, callback, preCalculated
           output_amount = outputAmount,
           formatted_input = formattedInputAmount,
           formatted_output = formattedOutputAmount,
-          execution_price = executionPrice.toDecimal(8),
-          price_impact_bps = avgPriceImpactBps,
-          price_impact_percent = Utils.bpsToDecimal(avgPriceImpactBps),
-          fee = {
-            bps = result.total_fee_bps,
-            percent = Utils.bpsToDecimal(result.total_fee_bps)
-          },
+
           route = {
             hops = #path,
             sources = sources
