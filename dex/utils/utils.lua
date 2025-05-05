@@ -177,9 +177,6 @@ function Utils.jsonPretty(data)
   end
 end
 
--- Alias for backwards compatibility
-Utils.stringifyJson = Utils.jsonEncode
-
 -- Error handling
 
 -- Create standardized error object
@@ -291,29 +288,6 @@ end
 -- Create unique ID for a directed token pair (order matters)
 function Utils.createDirectedPairId(tokenIn, tokenOut)
   return tokenIn .. "->" .. tokenOut
-end
-
--- Logging (basic implementation, can be expanded)
-function Utils.log(level, message, data)
-  local levels = { DEBUG = 0, INFO = 1, WARN = 2, ERROR = 3 }
-  local currentLevel = levels[Constants.OPTIMIZATION.LOG_LEVEL] or 1
-
-  if levels[level] < currentLevel then
-    return -- Skip logs below current level
-  end
-
-  local timestamp = os.date("%Y-%m-%d %H:%M:%S")
-  local logStr = string.format("[%s] [%s] %s", timestamp, level, message)
-
-  if data then
-    if type(data) == "table" then
-      logStr = logStr .. " " .. Utils.jsonEncode(data)
-    else
-      logStr = logStr .. " " .. tostring(data)
-    end
-  end
-
-  print(logStr)
 end
 
 return Utils
