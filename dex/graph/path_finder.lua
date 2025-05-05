@@ -421,7 +421,6 @@ function PathFinder.findOptimalSwap(sourceTokenId, targetTokenId, inputAmount, o
       end)
     end
   end)
-  -- Remove all code here that was outside the callback
 end
 
 return PathFinder
