@@ -79,6 +79,7 @@ function QuoteGenerator.generateQuote(path, inputAmount, callback, preCalculated
         target_token = tokenInfo and tokenInfo.target or { id = targetTokenId },
         input_amount = inputAmount,
         output_amount = outputAmount,
+        amount_out = outputAmount,
         formatted_input = formattedInputAmount,
         formatted_output = formattedOutputAmount,
         route = {
@@ -141,6 +142,7 @@ function QuoteGenerator.generateQuote(path, inputAmount, callback, preCalculated
           target_token = tokenInfo and tokenInfo.target or { id = targetTokenId },
           input_amount = inputAmount,
           output_amount = outputAmount,
+          amount_out = outputAmount,
           formatted_input = formattedInputAmount,
           formatted_output = formattedOutputAmount,
 
