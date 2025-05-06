@@ -169,6 +169,42 @@ function Graph:getPool(poolId)
   return self.poolsById[poolId]
 end
 
+function Graph:buildGraph(components, poolRepository, tokenRepository, callback)
+  local db = components.collector.db
+
+  -- Get all pools with token info
+  local pools = poolRepository.getPoolsWithTokenInfo(db)
+
+  -- Get all tokens
+  local tokens = tokenRepository.getAllTokens(db)
+
+  Logger.info("Building graph", { pools = #pools, tokens = #tokens })
+
+  -- Transform pools to have the expected structure
+  local transformedPools = {}
+  for _, pool in ipairs(pools) do
+    table.insert(transformedPools, {
+      id = pool.id,
+      source = pool.source,
+      token_a_id = pool.token_a.id,
+      token_b_id = pool.token_b.id,
+      fee_bps = pool.fee_bps,
+      status = pool.status
+    })
+  end
+
+  -- Build graph from transformed pools and tokens
+  local success = self:buildFromPools(transformedPools, tokens)
+
+  if success then
+    Logger.info("Graph built successfully")
+    callback(true)
+  else
+    Logger.error("Failed to build graph")
+    callback(false, "Failed to build graph")
+  end
+end
+
 -- Get all pools connecting two tokens (direct connections only)
 function Graph:getDirectPools(tokenA, tokenB)
   local directPools = {}

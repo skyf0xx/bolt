@@ -92,7 +92,7 @@ Constants.OPTIMIZATION = {
   BATCH_SIZE = 10,             -- Number of pools to update in a batch
   MAX_CONCURRENT_REQUESTS = 5, -- Maximum number of concurrent API requests
   CACHE_SIZE = 100,            -- Maximum size of reserve cache (number of pools)
-  LOG_LEVEL = "INFO"           -- Default log level (DEBUG, INFO, WARN, ERROR)
+  LOG_LEVEL = "DEBUG"          -- Default log level (DEBUG, INFO, WARN, ERROR)
 }
 
 -- Subscription constants

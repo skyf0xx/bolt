@@ -4,22 +4,21 @@ local Logger = require('dex.utils.logger')
 Logger = Logger.createLogger("QuoteGenerator")
 
 local Utils = require('dex.utils.utils')
-local Calculator = require('dex.swap.calculator')
 local TokenRepository = require('dex.db.token_repository')
 local PoolRepository = require('dex.db.pool_repository')
 
 local QuoteGenerator = {}
 
 -- Initialize the quote generator with dependencies
-function QuoteGenerator.init(db, calculator)
+function QuoteGenerator.init(db, collector)
   QuoteGenerator.db = db
-  QuoteGenerator.calculator = calculator or Calculator.init(db)
+  QuoteGenerator.collector = collector
   Logger.info("Quote generator initialized")
   return QuoteGenerator
 end
 
 -- Generate a quote for a specific path and input amount
-function QuoteGenerator.generateQuote(path, inputAmount, callback)
+function QuoteGenerator.generateQuote(path, inputAmount, callback, preCalculated)
   if not path or #path == 0 then
     callback(nil, "Invalid path")
     return
@@ -41,22 +40,22 @@ function QuoteGenerator.generateQuote(path, inputAmount, callback)
     local sourceDecimals = tokenInfo and tokenInfo.source and tokenInfo.source.decimals or Constants.NUMERIC.DECIMALS
     local targetDecimals = tokenInfo and tokenInfo.target and tokenInfo.target.decimals or Constants.NUMERIC.DECIMALS
 
-    -- Calculate the output for the path
-    QuoteGenerator.calculator.calculatePathOutput(path, inputAmount, function(result, err)
-      if not result then
-        callback(nil, err or "Failed to calculate path output")
-        return
-      end
+    -- Use pre-calculated results if available, otherwise calculate
+    if preCalculated then
+      local result = {
+        outputAmount = preCalculated.outputAmount,
+        steps = preCalculated.steps
+      }
+
 
       -- Format amounts for display
       local formattedInputAmount = Utils.formatTokenAmount(inputAmount, sourceDecimals)
-      local formattedOutputAmount = Utils.formatTokenAmount(result.output_amount, targetDecimals)
+      local formattedOutputAmount = Utils.formatTokenAmount(result.outputAmount, targetDecimals)
 
-      -- Calculate execution price
-      local executionPrice = BigDecimal.divide(
-        BigDecimal.fromTokenAmount(result.output_amount, targetDecimals),
-        BigDecimal.fromTokenAmount(inputAmount, sourceDecimals)
-      )
+      -- Make sure we handle both property naming conventions
+      local outputAmount = result.outputAmount
+
+
 
       -- Extract sources used in the path
       local sources = {}
@@ -71,7 +70,6 @@ function QuoteGenerator.generateQuote(path, inputAmount, callback)
       for _, step in ipairs(result.steps) do
         totalPriceImpactBps = totalPriceImpactBps + tonumber(step.price_impact_bps or 0)
       end
-      local avgPriceImpactBps = #result.steps > 0 and (totalPriceImpactBps / #result.steps) or 0
 
       -- Generate the quote
       local quote = {
@@ -80,16 +78,10 @@ function QuoteGenerator.generateQuote(path, inputAmount, callback)
         source_token = tokenInfo and tokenInfo.source or { id = sourceTokenId },
         target_token = tokenInfo and tokenInfo.target or { id = targetTokenId },
         input_amount = inputAmount,
-        output_amount = result.output_amount,
+        output_amount = outputAmount,
+        amount_out = outputAmount,
         formatted_input = formattedInputAmount,
         formatted_output = formattedOutputAmount,
-        execution_price = executionPrice.toDecimal(8),
-        price_impact_bps = avgPriceImpactBps,
-        price_impact_percent = Utils.bpsToDecimal(avgPriceImpactBps),
-        fee = {
-          bps = result.total_fee_bps,
-          percent = Utils.bpsToDecimal(result.total_fee_bps)
-        },
         route = {
           hops = #path,
           sources = sources
@@ -100,7 +92,7 @@ function QuoteGenerator.generateQuote(path, inputAmount, callback)
 
       -- Add slippage-adjusted output amounts
       quote.minimum_received = QuoteGenerator.applySlippage(
-        result.output_amount,
+        outputAmount,
         Constants.NUMERIC.DEFAULT_SLIPPAGE_TOLERANCE
       )
 
@@ -112,7 +104,72 @@ function QuoteGenerator.generateQuote(path, inputAmount, callback)
       )
 
       callback(quote)
-    end)
+    else
+      -- Original code path - calculate from scratch
+      QuoteGenerator.collector.calculatePathOutput(path, inputAmount, function(result, err)
+        if not result then
+          callback(nil, err or "Failed to calculate path output")
+          return
+        end
+
+        -- Format amounts for display
+        local formattedInputAmount = Utils.formatTokenAmount(inputAmount, sourceDecimals)
+        local formattedOutputAmount = Utils.formatTokenAmount(result.outputAmount, targetDecimals)
+
+
+        local outputAmount = result.outputAmount
+
+
+        -- Extract sources used in the path
+        local sources = {}
+        for _, step in ipairs(path) do
+          if not Utils.tableContains(sources, step.source) then
+            table.insert(sources, step.source)
+          end
+        end
+
+        -- Calculate average price impact
+        local totalPriceImpactBps = 0
+        for _, step in ipairs(result.steps) do
+          totalPriceImpactBps = totalPriceImpactBps + tonumber(step.price_impact_bps or 0)
+        end
+
+        -- Generate the quote
+        local quote = {
+          path = path,
+          steps = result.steps,
+          source_token = tokenInfo and tokenInfo.source or { id = sourceTokenId },
+          target_token = tokenInfo and tokenInfo.target or { id = targetTokenId },
+          input_amount = inputAmount,
+          output_amount = outputAmount,
+          amount_out = outputAmount,
+          formatted_input = formattedInputAmount,
+          formatted_output = formattedOutputAmount,
+
+          route = {
+            hops = #path,
+            sources = sources
+          },
+          timestamp = os.time(),
+          expiry = os.time() + Constants.TIME.RESERVE_CACHE_EXPIRY
+        }
+
+        -- Add slippage-adjusted output amounts
+        quote.minimum_received = QuoteGenerator.applySlippage(
+          outputAmount,
+          Constants.NUMERIC.DEFAULT_SLIPPAGE_TOLERANCE
+        )
+
+        -- Generate human-readable route description
+        quote.route_description = QuoteGenerator.generateRouteDescription(
+          path,
+          tokenInfo,
+          result.steps
+        )
+
+        callback(quote)
+      end)
+    end
   end)
 end
 
@@ -126,7 +183,6 @@ function QuoteGenerator.applySlippage(amount, slippageBps)
   return BigDecimal.multiply(bdAmount, bdSlippageFactor).value
 end
 
--- Get token pair information by IDs
 -- Get token pair information by IDs
 function QuoteGenerator.getTokenPairInfo(sourceTokenId, targetTokenId, callback)
   if not QuoteGenerator.db then
@@ -171,7 +227,7 @@ function QuoteGenerator.generateRouteDescription(path, tokenInfo, steps)
   end
 
   for i, step in ipairs(path) do
-    local stepOutput = steps and steps[i] and steps[i].amount_out or "?"
+    local stepOutput = steps and steps[i] and (steps[i].amount_out or steps[i].amountOut) or "?"
     local sourceSymbol = tokenSymbols[step.from] or step.from:sub(1, 8)
     local targetSymbol = tokenSymbols[step.to] or step.to:sub(1, 8)
     local dexName = step.source:sub(1, 1):upper() .. step.source:sub(2) -- Capitalize first letter
@@ -191,7 +247,7 @@ function QuoteGenerator.generateRouteDescription(path, tokenInfo, steps)
 end
 
 -- Generate comparative quotes for multiple paths
-function QuoteGenerator.generateComparativeQuotes(paths, inputAmount, callback)
+function QuoteGenerator.generateComparativeQuotes(paths, inputAmount, calculationResults, callback)
   if not paths or #paths == 0 then
     callback({ quotes = {} }, "No paths provided")
     return
@@ -201,29 +257,60 @@ function QuoteGenerator.generateComparativeQuotes(paths, inputAmount, callback)
   local pendingPaths = #paths
 
   for i, path in ipairs(paths) do
-    QuoteGenerator.generateQuote(path, inputAmount, function(quote, err)
-      pendingPaths = pendingPaths - 1
+    -- Use pre-calculated results if available
+    local preCalculated = calculationResults and calculationResults[i]
 
-      if quote then
-        table.insert(quotes, quote)
-      else
-        Logger.warn("Failed to generate quote for path", { pathIndex = i, error = err })
-      end
+    if preCalculated then
+      -- Generate quote with pre-calculated results
+      QuoteGenerator.generateQuote(path, inputAmount, function(quote, err)
+        pendingPaths = pendingPaths - 1
 
-      if pendingPaths == 0 then
-        -- Sort quotes by output amount (descending)
-        table.sort(quotes, function(a, b)
-          return BigDecimal.new(a.output_amount).value > BigDecimal.new(b.output_amount).value
-        end)
+        if quote then
+          table.insert(quotes, quote)
+        else
+          Logger.warn("Failed to generate quote for path", { pathIndex = i, error = err })
+        end
 
-        callback({
-          quotes = quotes,
-          best_quote = #quotes > 0 and quotes[1] or nil,
-          input_amount = inputAmount,
-          quote_count = #quotes
-        })
-      end
-    end)
+        if pendingPaths == 0 then
+          -- Sort quotes by output amount (descending)
+          table.sort(quotes, function(a, b)
+            return BigDecimal.new(a.outputAmount).value > BigDecimal.new(b.outputAmount).value
+          end)
+
+          callback({
+            quotes = quotes,
+            best_quote = #quotes > 0 and quotes[1] or nil,
+            input_amount = inputAmount,
+            quote_count = #quotes
+          })
+        end
+      end, preCalculated) -- Pass pre-calculated results here
+    else
+      -- Original code path when no pre-calculated results are available
+      QuoteGenerator.generateQuote(path, inputAmount, function(quote, err)
+        pendingPaths = pendingPaths - 1
+
+        if quote then
+          table.insert(quotes, quote)
+        else
+          Logger.warn("Failed to generate quote for path", { pathIndex = i, error = err })
+        end
+
+        if pendingPaths == 0 then
+          -- Sort quotes by output amount (descending)
+          table.sort(quotes, function(a, b)
+            return BigDecimal.new(a.outputAmount).value > BigDecimal.new(b.outputAmount).value
+          end)
+
+          callback({
+            quotes = quotes,
+            best_quote = #quotes > 0 and quotes[1] or nil,
+            input_amount = inputAmount,
+            quote_count = #quotes
+          })
+        end
+      end)
+    end
   end
 end
 
@@ -249,14 +336,19 @@ function QuoteGenerator.findBestQuote(sourceTokenId, targetTokenId, inputAmount,
       return
     end
 
-    -- Extract just the paths from the results
+    -- Extract paths and calculation results
     local paths = {}
-    for _, pathData in ipairs(result.paths) do
-      table.insert(paths, pathData.path)
+    local calculationResults = {}
+    for i, pathData in ipairs(result.paths) do
+      paths[i] = pathData.path
+      calculationResults[i] = {
+        outputAmount = pathData.outputAmount,
+        steps = pathData.steps
+      }
     end
 
-    -- Generate comparative quotes
-    QuoteGenerator.generateComparativeQuotes(paths, inputAmount, function(quoteResults)
+    -- Generate comparative quotes with pre-calculated results
+    QuoteGenerator.generateComparativeQuotes(paths, inputAmount, calculationResults, function(quoteResults)
       callback(quoteResults)
     end)
   end)

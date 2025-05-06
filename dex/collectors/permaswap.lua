@@ -48,18 +48,22 @@ function Permaswap.fetchReserves(poolAddress, callback)
 end
 
 -- Get expected output directly from Permaswap API
-function Permaswap.getAmountOut(poolAddress, tokenIn, amountIn, callback)
+function Permaswap.requestOrder(poolAddress, tokenIn, tokenOut, amountIn, callback)
   Logger.debug("Getting amount out", {
     pool = poolAddress,
     tokenIn = tokenIn,
-    amountIn = amountIn
+    tokenOut = tokenOut,
+    amountIn = amountIn,
+
   })
 
   ao.send({
     Target = poolAddress,
-    Action = Constants.API.PERMASWAP.GET_AMOUNT_OUT,
+    Action = Constants.API.PERMASWAP.REQUEST_ORDER,
     TokenIn = tokenIn,
-    AmountIn = tostring(amountIn)
+    TokenOut = tokenOut,
+    AmountIn = tostring(amountIn),
+    --AmountOut = "1" --force an error if the pool is empty. TODO: deal with error
   }).onReply(function(response)
     if response.Error then
       Logger.error("Failed to get amount out", {
@@ -69,9 +73,10 @@ function Permaswap.getAmountOut(poolAddress, tokenIn, amountIn, callback)
       callback(nil, response.Error)
     else
       callback({
-        amountOut = response.AmountOut,
-        tokenIn = response.TokenIn,
-        tokenOut = response.TokenOut,
+        amountOut = response.Amount,
+        outputAmount = response.Amount,
+        tokenIn = response.HolderAssetID,
+        tokenOut = response.AssetID,
         fee = {
           issuer = response.IssuerFee or "0",
           holder = response.HolderFee or "0",
