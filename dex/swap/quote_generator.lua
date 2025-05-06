@@ -70,7 +70,6 @@ function QuoteGenerator.generateQuote(path, inputAmount, callback, preCalculated
       for _, step in ipairs(result.steps) do
         totalPriceImpactBps = totalPriceImpactBps + tonumber(step.price_impact_bps or 0)
       end
-      Logger.info("there")
 
       -- Generate the quote
       local quote = {
