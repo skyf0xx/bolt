@@ -43,24 +43,17 @@ function QuoteGenerator.generateQuote(path, inputAmount, callback, preCalculated
     -- Use pre-calculated results if available, otherwise calculate
     if preCalculated then
       local result = {
-        output_amount = preCalculated.outputAmount,
-        outputAmount = preCalculated.outputAmount, -- For backward compatibility
+        outputAmount = preCalculated.outputAmount,
         steps = preCalculated.steps
       }
 
 
       -- Format amounts for display
       local formattedInputAmount = Utils.formatTokenAmount(inputAmount, sourceDecimals)
-      local formattedOutputAmount = Utils.formatTokenAmount(result.output_amount or result.outputAmount, targetDecimals)
+      local formattedOutputAmount = Utils.formatTokenAmount(result.outputAmount, targetDecimals)
 
       -- Make sure we handle both property naming conventions
-      local outputAmount = result.output_amount or result.outputAmount
-
-      -- Calculate execution price
-      local executionPrice = BigDecimal.divide(
-        BigDecimal.new(outputAmount),
-        BigDecimal.new(inputAmount)
-      )
+      local outputAmount = result.outputAmount
 
 
 
@@ -121,15 +114,11 @@ function QuoteGenerator.generateQuote(path, inputAmount, callback, preCalculated
 
         -- Format amounts for display
         local formattedInputAmount = Utils.formatTokenAmount(inputAmount, sourceDecimals)
-        local formattedOutputAmount = Utils.formatTokenAmount(result.output_amount or result.outputAmount, targetDecimals)
+        local formattedOutputAmount = Utils.formatTokenAmount(result.outputAmount, targetDecimals)
 
-        -- Make sure we handle both property naming conventions
-        local outputAmount = result.output_amount or result.outputAmount
-        -- Calculate execution price
-        local executionPrice = BigDecimal.divide(
-          BigDecimal.new(outputAmount),
-          BigDecimal.new(inputAmount)
-        )
+
+        local outputAmount = result.outputAmount
+
 
         -- Extract sources used in the path
         local sources = {}
@@ -284,7 +273,7 @@ function QuoteGenerator.generateComparativeQuotes(paths, inputAmount, calculatio
         if pendingPaths == 0 then
           -- Sort quotes by output amount (descending)
           table.sort(quotes, function(a, b)
-            return BigDecimal.new(a.output_amount).value > BigDecimal.new(b.output_amount).value
+            return BigDecimal.new(a.outputAmount).value > BigDecimal.new(b.outputAmount).value
           end)
 
           callback({
@@ -309,7 +298,7 @@ function QuoteGenerator.generateComparativeQuotes(paths, inputAmount, calculatio
         if pendingPaths == 0 then
           -- Sort quotes by output amount (descending)
           table.sort(quotes, function(a, b)
-            return BigDecimal.new(a.output_amount).value > BigDecimal.new(b.output_amount).value
+            return BigDecimal.new(a.outputAmount).value > BigDecimal.new(b.outputAmount).value
           end)
 
           callback({
