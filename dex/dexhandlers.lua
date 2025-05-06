@@ -278,7 +278,7 @@ function DexHandlers.handleGetQuote(msg)
       msg.reply({
         Action = msg.Action .. "Response",
         Status = "Success",
-        Quote = tostring(quoteResults.best_quote),
+        Quote = Utils.jsonEncode(quoteResults.best_quote),
         AlternativeQuotes = Utils.jsonEncode(quoteResults.quotes),
         QuoteCount = tostring(quoteResults.quote_count)
       })
