@@ -278,7 +278,7 @@ function DexHandlers.handleGetQuote(msg)
       msg.reply({
         Action = msg.Action .. "Response",
         Status = "Success",
-        Quote = tostring(quoteResults.best_quote),
+        Quote = Utils.jsonEncode(quoteResults.best_quote),
         AlternativeQuotes = Utils.jsonEncode(quoteResults.quotes),
         QuoteCount = tostring(quoteResults.quote_count)
       })
@@ -315,40 +315,6 @@ function DexHandlers.handleFindPaths(msg)
   })
 end
 
--- Handler for finding best route
-function DexHandlers.handleFindRoute(msg)
-  if not Components.graph or not Components.graph.initialized then
-    DexHandlers.handleError(msg, "Graph not initialized", "ERR_GRAPH_NOT_INITIALIZED")
-    return
-  end
-
-  if not msg.SourceToken or not msg.TargetToken or not msg.AmountIn then
-    DexHandlers.handleError(msg, "Missing required parameters: SourceToken, TargetToken, Amount", "ERR_INVALID_PARAMS")
-    return
-  end
-
-  local sourceTokenId = msg.SourceToken
-  local targetTokenId = msg.TargetToken
-  local amountIn = msg.AmountIn
-
-  Components.pathFinder.findBestRoute(sourceTokenId, targetTokenId, amountIn, function(result, err)
-    if not result then
-      DexHandlers.handleError(msg, err or "No viable route found", Constants.ERROR.PATH_NOT_FOUND)
-      return
-    end
-
-    msg.reply({
-      Action = msg.Action .. "Response",
-      Status = "Success",
-      Route = Utils.jsonEncode(result),
-      SourceToken = sourceTokenId,
-      TargetToken = targetTokenId,
-      InputAmount = tostring(amountIn),
-      OutputAmount = tostring(result.outputAmount)
-    })
-  end)
-end
-
 function DexHandlers.handlePollingCycle(msg)
   if not Components.poller then
     DexHandlers.handleError(msg, "Poller not initialized", "ERR_POLLER_NOT_INITIALIZED")
@@ -356,36 +322,6 @@ function DexHandlers.handlePollingCycle(msg)
   end
 
   Components.poller.executePollingCycle(msg)
-end
-
--- Handler for calculating swap output
-function DexHandlers.handleCalculateOutput(msg)
-  if not Components.calculator then
-    DexHandlers.handleError(msg, "Calculator not initialized", "ERR_CALCULATOR_NOT_INITIALIZED")
-    return
-  end
-
-  if not msg.PoolId or not msg.TokenIn or not msg.AmountIn then
-    DexHandlers.handleError(msg, "Missing required parameters: PoolId, TokenIn, Amount", "ERR_INVALID_PARAMS")
-    return
-  end
-
-  local poolId = msg.PoolId
-  local tokenIn = msg.TokenIn
-  local amountIn = msg.AmountIn
-
-  Components.calculator.calculateSwapOutput(poolId, tokenIn, amountIn, function(result, err)
-    if not result then
-      DexHandlers.handleError(msg, err or "Calculation failed", Constants.ERROR.CALCULATION_FAILED)
-      return
-    end
-
-    msg.reply({
-      Action = msg.Action .. "Response",
-      Status = "Success",
-      Result = Utils.jsonEncode(result)
-    })
-  end)
 end
 
 -- Handler for finding arbitrage opportunities

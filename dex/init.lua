@@ -67,7 +67,7 @@ function Init.setupComponents(db, existingComponents)
 
   -- Initialize quote generator with existing calculator if available
   existingComponents.quoteGenerator = existingComponents.quoteGenerator or
-      QuoteGenerator.init(db, existingComponents.calculator)
+      QuoteGenerator.init(db, existingComponents.collector)
 
   -- Reuse existing graph or create a new one
   existingComponents.graph = existingComponents.graph or Graph.new()
@@ -112,40 +112,7 @@ end
 
 -- Build graph from database
 function Init.buildGraph(components, callback)
-  local db = components.collector.db
-  local graph = components.graph
-
-  -- Get all pools with token info
-  local pools = PoolRepository.getPoolsWithTokenInfo(db)
-
-  -- Get all tokens
-  local tokens = TokenRepository.getAllTokens(db)
-
-  Logger.info("Building graph", { pools = #pools, tokens = #tokens })
-
-  -- Transform pools to have the expected structure
-  local transformedPools = {}
-  for _, pool in ipairs(pools) do
-    table.insert(transformedPools, {
-      id = pool.id,
-      source = pool.source,
-      token_a_id = pool.token_a.id,
-      token_b_id = pool.token_b.id,
-      fee_bps = pool.fee_bps,
-      status = pool.status
-    })
-  end
-
-  -- Build graph from transformed pools and tokens
-  local success = graph:buildFromPools(transformedPools, tokens)
-
-  if success then
-    Logger.info("Graph built successfully")
-    callback(true)
-  else
-    Logger.error("Failed to build graph")
-    callback(false, "Failed to build graph")
-  end
+  components.graph:buildGraph(components, PoolRepository, TokenRepository, callback)
 end
 
 -- Main initialization function

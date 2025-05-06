@@ -135,6 +135,7 @@ function Botega.getSwapOutput(poolAddress, tokenIn, amountIn, userAddress, callb
       callback(nil, response.Error)
     else
       callback({
+        outputAmount = response.Output,
         amountOut = response.Output,
         amountInAfterFees = response["Quantity-After-Fees"],
         lpFee = response["LP-Fee-Quantity"],
