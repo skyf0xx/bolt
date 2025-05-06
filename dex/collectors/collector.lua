@@ -283,7 +283,7 @@ function Collector.calculatePathOutput(path, inputAmount, callback)
     -- Calculate output amount based on pool source
     if pool.source == Constants.SOURCE.PERMASWAP then
       -- Use Permaswap API instead of formula
-      Permaswap.getAmountOut(poolId, tokenIn, currentInput, function(response, err)
+      Permaswap.requestOrder(poolId, tokenIn, tokenOut, currentInput, function(response, err)
         if err or not response then
           callback(nil, err or "Failed to get output amount from Permaswap")
           return
