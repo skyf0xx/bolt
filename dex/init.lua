@@ -36,18 +36,6 @@ function Init.setupDatabase()
   return db
 end
 
--- Load pool list from configuration
-function Init.getConfiguredPools()
-  -- In a real implementation, this might load from a config file
-  -- For now, returning a placeholder list
-  return {
-    -- Permaswap pools
-    { source = Constants.SOURCE.PERMASWAP, address = "uzJSyA3VTsEm1aHL2rmPH-Of5lA0vB5Flu9lCn2pn7k" },
-    -- Botega pools
-    { source = Constants.SOURCE.BOTEGA,    address = "Ov64swLY1J...BRU" }
-  }
-end
-
 -- Setup components and collect initial data
 function Init.setupComponents(db, existingComponents)
   existingComponents = existingComponents or {}
@@ -76,38 +64,6 @@ function Init.setupComponents(db, existingComponents)
   existingComponents.pathFinder = existingComponents.pathFinder or PathFinder.init(existingComponents.graph, db)
 
   return existingComponents
-end
-
--- Collect initial data and build graph
-function Init.collectInitialData(components, callback)
-  local collector = components.collector
-
-
-  -- Get configured pools
-  local pools = Init.getConfiguredPools()
-
-  -- Collect data from all configured pools
-  Logger.info("Collecting initial data", { poolCount = #pools })
-
-  collector.collectAll(pools, function(results)
-    if #results.pools == 0 then
-      Logger.warn("No pools collected")
-      callback(false, "No pools collected")
-      return
-    end
-
-    -- Save collected data to database
-    collector.saveToDatabase(results, function(success, err)
-      if not success then
-        Logger.error("Failed to save data", { error = err })
-        callback(false, err)
-        return
-      end
-
-      -- After data is saved, build the graph
-      Init.buildGraph(components, callback)
-    end)
-  end)
 end
 
 -- Build graph from database
