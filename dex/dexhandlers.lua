@@ -437,6 +437,7 @@ function DexHandlers.handleCollectData(msg)
     return
   end
 
+
   Components.collector.collectFromDex(source, poolAddresses, function(results)
     -- Save to database if requested
     if msg.SaveToDb and Components.collector.db then
@@ -507,6 +508,25 @@ function DexHandlers.handleCollectData(msg)
       })
     end
   end)
+end
+
+function DexHandlers.handleFlushCollectors(msg)
+  if not Components.collector then
+    DexHandlers.handleError(msg, "Collector not initialized", "ERR_COLLECTOR_NOT_INITIALIZED")
+    return
+  end
+
+  local maxAge = msg.MaxAge           -- Optional: age threshold in seconds
+  local forced = msg.Forced == "true" -- Force flush all pending collectors
+
+  local result = Components.collector.flushPendingCollections(maxAge, forced)
+
+  msg.reply({
+    Action = msg.Action .. "Response",
+    Status = "Success",
+    FlushedCount = tostring(result.flushedCount),
+    RemainingCount = tostring(result.remainingCount)
+  })
 end
 
 -- These are the initialization handlers
