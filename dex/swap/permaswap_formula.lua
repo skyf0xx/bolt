@@ -6,7 +6,7 @@ Logger = Logger.createLogger("PermaswapFormula")
 local PermaswapFormula = {}
 
 -- Calculate expected output amount for a swap in Permaswap
--- Using formula: amountOut = (amountIn * (10000 - fee) * reserveOut) / ((10000 * reserveIn) + (amountIn * (10000 - fee)))
+-- Using formula: amount_out = (amountIn * (10000 - fee) * reserveOut) / ((10000 * reserveIn) + (amountIn * (10000 - fee)))
 function PermaswapFormula.getOutputAmount(amountIn, reserveIn, reserveOut, feeBps)
   Logger.debug("Calculating output amount", {
     amountIn = amountIn,
@@ -41,17 +41,17 @@ function PermaswapFormula.getOutputAmount(amountIn, reserveIn, reserveOut, feeBp
 end
 
 -- Calculate input amount needed to get a specific output
--- Derived from output formula: amountIn = (reserveIn * amountOut * 10000) / ((reserveOut - amountOut) * (10000 - fee))
-function PermaswapFormula.getInputAmount(amountOut, reserveIn, reserveOut, feeBps)
+-- Derived from output formula: amountIn = (reserveIn * amount_out * 10000) / ((reserveOut - amount_out) * (10000 - fee))
+function PermaswapFormula.getInputAmount(amount_out, reserveIn, reserveOut, feeBps)
   Logger.debug("Calculating input amount", {
-    amountOut = amountOut,
+    amount_out = amount_out,
     reserveIn = reserveIn,
     reserveOut = reserveOut,
     feeBps = feeBps
   })
 
   -- Convert inputs to BigDecimal
-  local bdAmountOut = BigDecimal.new(amountOut)
+  local bdAmountOut = BigDecimal.new(amount_out)
   local bdReserveIn = BigDecimal.new(reserveIn)
   local bdReserveOut = BigDecimal.new(reserveOut)
   local bdFee = BigDecimal.new(feeBps)
@@ -60,7 +60,7 @@ function PermaswapFormula.getInputAmount(amountOut, reserveIn, reserveOut, feeBp
   -- Check if output amount exceeds available reserves
   if BigDecimal.gte(bdAmountOut, bdReserveOut) then
     Logger.error("Insufficient output reserve", {
-      amountOut = amountOut,
+      amount_out = amount_out,
       reserveOut = reserveOut
     })
     return nil, "Insufficient output reserve"
@@ -69,11 +69,11 @@ function PermaswapFormula.getInputAmount(amountOut, reserveIn, reserveOut, feeBp
   -- Calculate fee factor: (10000 - fee)
   local feeFactor = BigDecimal.subtract(bdBpsMultiplier, bdFee)
 
-  -- Calculate numerator: reserveIn * amountOut * 10000
+  -- Calculate numerator: reserveIn * amount_out * 10000
   local scaledReserveIn = BigDecimal.multiply(bdReserveIn, bdBpsMultiplier)
   local numerator = BigDecimal.multiply(scaledReserveIn, bdAmountOut)
 
-  -- Calculate denominator: (reserveOut - amountOut) * (10000 - fee)
+  -- Calculate denominator: (reserveOut - amount_out) * (10000 - fee)
   local remainingReserveOut = BigDecimal.subtract(bdReserveOut, bdAmountOut)
   local denominator = BigDecimal.multiply(remainingReserveOut, feeFactor)
 
@@ -136,12 +136,12 @@ function PermaswapFormula.calculateConstantProduct(reserveX, reserveY)
 end
 
 -- Verify if a trade would satisfy the constant product formula
-function PermaswapFormula.verifyTradeValidity(reserveIn, reserveOut, amountIn, amountOut, feeBps)
+function PermaswapFormula.verifyTradeValidity(reserveIn, reserveOut, amountIn, amount_out, feeBps)
   -- Convert all values to BigDecimal
   local bdReserveIn = BigDecimal.new(reserveIn)
   local bdReserveOut = BigDecimal.new(reserveOut)
   local bdAmountIn = BigDecimal.new(amountIn)
-  local bdAmountOut = BigDecimal.new(amountOut)
+  local bdAmountOut = BigDecimal.new(amount_out)
   local bdFee = BigDecimal.new(feeBps)
   local bdBpsMultiplier = BigDecimal.new(Constants.NUMERIC.BASIS_POINTS_MULTIPLIER)
 
@@ -188,16 +188,16 @@ function PermaswapFormula.calculateNewReserves(reserveIn, reserveOut, amountIn, 
   local amountInAfterFee = BigDecimal.multiply(bdAmountIn, feeMultiplier)
 
   -- Calculate amount out
-  local amountOut = PermaswapFormula.getOutputAmount(amountIn, reserveIn, reserveOut, feeBps)
+  local amount_out = PermaswapFormula.getOutputAmount(amountIn, reserveIn, reserveOut, feeBps)
 
   -- New reserves after trade
   local newReserveIn = BigDecimal.add(bdReserveIn, amountInAfterFee)
-  local newReserveOut = BigDecimal.subtract(bdReserveOut, amountOut)
+  local newReserveOut = BigDecimal.subtract(bdReserveOut, amount_out)
 
   return {
     newReserveIn = newReserveIn.value,
     newReserveOut = newReserveOut.value,
-    amountOut = amountOut.value
+    amount_out = amount_out.value
   }
 end
 
