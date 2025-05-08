@@ -44,27 +44,27 @@ function BotegaFormula.getOutputAmount(amountIn, reserveIn, reserveOut, feePerce
   local newReserveOut = BigDecimal.divide(reserveProduct, newDenominator)
 
   -- Calculate output amount: reserveOut - newReserveOut
-  local outputAmount = BigDecimal.subtract(bdReserveOut, newReserveOut)
+  local amount_out = BigDecimal.subtract(bdReserveOut, newReserveOut)
 
   Logger.debug("Output amount calculated", {
     amountInAfterFees = amountInAfterFees.value,
-    result = outputAmount.value
+    result = amount_out.value
   })
 
-  return outputAmount
+  return amount_out
 end
 
 -- Calculate input amount needed to get a specific output
-function BotegaFormula.getInputAmount(amountOut, reserveIn, reserveOut, feePercent)
+function BotegaFormula.getInputAmount(amount_out, reserveIn, reserveOut, feePercent)
   Logger.debug("Calculating input amount", {
-    amountOut = amountOut,
+    amount_out = amount_out,
     reserveIn = reserveIn,
     reserveOut = reserveOut,
     feePercent = feePercent
   })
 
   -- Convert inputs to BigDecimal
-  local bdAmountOut = BigDecimal.new(amountOut)
+  local bdAmountOut = BigDecimal.new(amount_out)
   local bdReserveIn = BigDecimal.new(reserveIn)
   local bdReserveOut = BigDecimal.new(reserveOut)
   local bdFeePercent = BigDecimal.new(feePercent)
@@ -73,7 +73,7 @@ function BotegaFormula.getInputAmount(amountOut, reserveIn, reserveOut, feePerce
   -- Check if output amount exceeds available reserves
   if BigDecimal.gte(bdAmountOut, bdReserveOut) then
     Logger.error("Insufficient output reserve", {
-      amountOut = amountOut,
+      amount_out = amount_out,
       reserveOut = reserveOut
     })
     return nil, "Insufficient output reserve"
@@ -139,10 +139,10 @@ function BotegaFormula.calculatePriceImpactBps(amountIn, reserveIn, reserveOut, 
   local newReserveOut = BigDecimal.divide(reserveProduct, newReserveIn)
 
   -- Calculate output amount
-  local amountOut = BigDecimal.subtract(bdReserveOut, newReserveOut)
+  local amount_out = BigDecimal.subtract(bdReserveOut, newReserveOut)
 
-  -- Calculate execution price: amountOut / amountIn
-  local executionPrice = BigDecimal.divide(amountOut, bdAmountIn)
+  -- Calculate execution price: amount_out / amountIn
+  local executionPrice = BigDecimal.divide(amount_out, bdAmountIn)
 
   -- Calculate price impact: (spotPrice - executionPrice) / spotPrice
   local priceDifference = BigDecimal.subtract(spotPrice, executionPrice)
@@ -164,12 +164,12 @@ function BotegaFormula.calculateConstantProduct(reserveX, reserveY)
 end
 
 -- Verify if a trade would satisfy the constant product formula
-function BotegaFormula.verifyTradeValidity(reserveIn, reserveOut, amountIn, amountOut, feePercent)
+function BotegaFormula.verifyTradeValidity(reserveIn, reserveOut, amountIn, amount_out, feePercent)
   -- Convert all values to BigDecimal
   local bdReserveIn = BigDecimal.new(reserveIn)
   local bdReserveOut = BigDecimal.new(reserveOut)
   local bdAmountIn = BigDecimal.new(amountIn)
-  local bdAmountOut = BigDecimal.new(amountOut)
+  local bdAmountOut = BigDecimal.new(amount_out)
   local bdFeePercent = BigDecimal.new(feePercent)
   local bdHundred = BigDecimal.new('100')
 

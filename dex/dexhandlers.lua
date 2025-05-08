@@ -5,7 +5,7 @@ local Utils = require('dex.utils.utils')
 local TokenRepository = require('dex.db.token_repository')
 local PoolRepository = require('dex.db.pool_repository')
 local Init = require('dex.init')
-
+local Pools = require('dex.db.pools')
 local DexHandlers = {}
 
 
@@ -430,7 +430,7 @@ function DexHandlers.handleCollectData(msg)
   end
 
   local source = msg.Source
-  local poolAddresses = Utils.jsonDecode(msg.PoolAddresses)
+  local poolAddresses = Pools[source]
 
   if not source or not poolAddresses or #poolAddresses == 0 then
     DexHandlers.handleError(msg, "Missing required parameters: Source, PoolAddresses", "ERR_INVALID_PARAMS")

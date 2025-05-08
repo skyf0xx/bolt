@@ -255,7 +255,7 @@ end
 function Collector.calculatePathOutput(path, inputAmount, callback)
   local result = {
     inputAmount = inputAmount,
-    outputAmount = inputAmount,
+    amount_out = inputAmount,
     steps = {}
   }
 
@@ -263,7 +263,7 @@ function Collector.calculatePathOutput(path, inputAmount, callback)
   local function processStep(index, currentInput)
     if index > #path then
       -- All steps processed, return result
-      result.outputAmount = currentInput
+      result.amount_out = currentInput
       callback(result)
       return
     end
@@ -289,7 +289,7 @@ function Collector.calculatePathOutput(path, inputAmount, callback)
           return
         end
 
-        local outputAmount = response.amountOut
+        local amount_out = response.amount_out
 
         -- Add step to result
         table.insert(result.steps, {
@@ -298,12 +298,12 @@ function Collector.calculatePathOutput(path, inputAmount, callback)
           token_in = tokenIn,
           token_out = tokenOut,
           amount_in = currentInput,
-          amount_out = outputAmount,
+          amount_out = amount_out,
           fee_bps = pool.fee_bps
         })
 
         -- Process next step
-        processStep(index + 1, outputAmount)
+        processStep(index + 1, amount_out)
       end)
     elseif pool.source == Constants.SOURCE.BOTEGA then
       -- Use Botega API instead of formula
@@ -313,7 +313,7 @@ function Collector.calculatePathOutput(path, inputAmount, callback)
           return
         end
 
-        local outputAmount = response.amountOut
+        local amount_out = response.amount_out
 
         -- Add step to result
         table.insert(result.steps, {
@@ -322,12 +322,12 @@ function Collector.calculatePathOutput(path, inputAmount, callback)
           token_in = tokenIn,
           token_out = tokenOut,
           amount_in = currentInput,
-          amount_out = outputAmount,
+          amount_out = amount_out,
           fee_bps = pool.fee_bps
         })
 
         -- Process next step
-        processStep(index + 1, outputAmount)
+        processStep(index + 1, amount_out)
       end)
     else
       callback(nil, "Unsupported pool source: " .. tostring(pool.source))

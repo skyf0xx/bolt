@@ -63,7 +63,6 @@ function Permaswap.requestOrder(poolAddress, tokenIn, tokenOut, amountIn, callba
     TokenIn = tokenIn,
     TokenOut = tokenOut,
     AmountIn = tostring(amountIn),
-    --AmountOut = "1" --force an error if the pool is empty. TODO: deal with error
   }).onReply(function(response)
     if response.Error then
       Logger.error("Failed to get amount out", {
@@ -72,16 +71,11 @@ function Permaswap.requestOrder(poolAddress, tokenIn, tokenOut, amountIn, callba
       })
       callback(nil, response.Error)
     else
+      local data = Utils.jsonDecode(response.Data)
       callback({
-        amountOut = response.Amount,
-        outputAmount = response.Amount,
-        tokenIn = response.HolderAssetID,
-        tokenOut = response.AssetID,
-        fee = {
-          issuer = response.IssuerFee or "0",
-          holder = response.HolderFee or "0",
-          pool = response.PoolFee or "0"
-        }
+        amount_out = data.Amount,
+        tokenIn = data.HolderAssetID,
+        tokenOut = data.AssetID,
       })
     end
   end)
@@ -230,10 +224,7 @@ function Permaswap.executeSwap(poolAddress, tokenIn, tokenOut, amountIn, minAmou
     AmountIn = tostring(amountIn)
   }
 
-  -- Add minimum amount out if specified
-  if minAmountOut then
-    request.AmountOut = tostring(minAmountOut)
-  end
+
 
   ao.send(request).onReply(function(response)
     if response.Error then
