@@ -44,23 +44,11 @@ function Collector.collectFromDex(source, poolAddresses, callback)
     return
   end
 
-  -- Create a unique ID for this collection operation
-  local operationId = source .. "-" .. os.time() .. "-" .. math.random(1000, 9999)
 
-  -- Track this operation
-  Collector.pendingCollections[operationId] = {
-    source = source,
-    startTime = os.time(),
-    poolCount = #poolAddresses,
-    completedPools = 0,
-    callback = callback
-  }
-
-  Logger.info("Collecting data from " .. source, { poolCount = #poolAddresses, operationId = operationId })
+  Logger.info("Collecting data from " .. source, { poolCount = #poolAddresses })
   collector.collectAllPoolsData(poolAddresses, function(results)
     -- Remove from pending operations
-    Collector.pendingCollections[operationId] = nil
-    Logger.info("Collection completed for " .. source, { operationId = operationId })
+    Logger.info("Collection completed for " .. source)
     callback(results)
   end)
 end
@@ -105,29 +93,12 @@ function Collector.collectAll(poolList, finalCallback)
     return
   end
 
-  -- Create a unique ID for this combined collection operation
-  local operationId = "all-" .. os.time() .. "-" .. math.random(1000, 9999)
 
-  -- Track this operation
-  Collector.pendingCollections[operationId] = {
-    source = "multiple",
-    startTime = os.time(),
-    poolCount = Utils.tableSize(poolsBySource),
-    completedSources = 0,
-    callback = finalCallback
-  }
 
   -- Collect from each source
   for source, addresses in pairs(poolsBySource) do
     Collector.collectFromDex(source, addresses, function(sourceResults)
       pendingSources = pendingSources - 1
-
-      -- Update tracking
-      if Collector.pendingCollections[operationId] then
-        Collector.pendingCollections[operationId].completedSources =
-            Collector.pendingCollections[operationId].completedSources + 1
-      end
-
       -- Merge results
       for _, pool in ipairs(sourceResults.pools) do
         table.insert(results.pools, pool)
@@ -166,9 +137,6 @@ function Collector.collectAll(poolList, finalCallback)
 
       -- If all sources are processed, return the results
       if pendingSources == 0 then
-        -- Remove from pending operations
-        Collector.pendingCollections[operationId] = nil
-
         Logger.info("Collection completed", {
           poolCount = #results.pools,
           tokenCount = #results.tokens,
@@ -310,23 +278,10 @@ function Collector.calculatePathOutput(path, inputAmount, callback)
     local tokenIn = step.from
     local tokenOut = step.to
 
-    -- Create a unique ID for this step's calculation
-    local operationId = "path-step-" .. poolId .. "-" .. os.time() .. "-" .. math.random(1000, 9999)
-
-    -- Track this operation
-    Collector.pendingCollections[operationId] = {
-      source = "path-step",
-      startTime = os.time(),
-      poolId = poolId,
-      tokenIn = tokenIn,
-      tokenOut = tokenOut,
-      callback = callback -- store original callback for potential flush
-    }
 
     -- Get pool data
     local pool = PoolRepository.getPool(Collector.db, poolId)
     if not pool then
-      Collector.pendingCollections[operationId] = nil
       callback(nil, "Pool not found: " .. poolId)
       return
     end
@@ -335,9 +290,6 @@ function Collector.calculatePathOutput(path, inputAmount, callback)
     if pool.source == Constants.SOURCE.PERMASWAP then
       -- Use Permaswap API instead of formula
       Permaswap.requestOrder(poolId, tokenIn, tokenOut, currentInput, function(response, err)
-        -- Remove from pending operations
-        Collector.pendingCollections[operationId] = nil
-
         if err or not response then
           callback(nil, err or "Failed to get output amount from Permaswap")
           return
@@ -362,9 +314,6 @@ function Collector.calculatePathOutput(path, inputAmount, callback)
     elseif pool.source == Constants.SOURCE.BOTEGA then
       -- Use Botega API instead of formula
       Botega.getSwapOutput(poolId, tokenIn, currentInput, nil, function(response, err)
-        -- Remove from pending operations
-        Collector.pendingCollections[operationId] = nil
-
         if err or not response then
           callback(nil, err or "Failed to get swap output from Botega")
           return
@@ -387,7 +336,6 @@ function Collector.calculatePathOutput(path, inputAmount, callback)
         processStep(index + 1, amount_out)
       end)
     else
-      Collector.pendingCollections[operationId] = nil
       callback(nil, "Unsupported pool source: " .. tostring(pool.source))
     end
   end
