@@ -196,12 +196,25 @@ function Botega.normalizePoolData(poolAddress, poolInfo)
 end
 
 -- Collect data for a single Botega pool
-function Botega.collectPoolData(poolAddress, callback)
+-- Collect data for a single Botega pool
+function Botega.collectPoolData(poolAddress, collector, callback)
   Logger.info("Collecting data for pool", { pool = poolAddress })
 
+  -- Add to pending collections
+  collector.pendingCollections[poolAddress] = {
+    source = Constants.SOURCE.BOTEGA,
+    startTime = os.time(),
+    poolId = poolAddress,
+    poolCount = 1,
+    completedPools = 0,
+    callback = callback
+  }
+
   -- Get basic pool info only
-  Botega.fetchPoolInfo(poolAddress, function(poolInfo, infoErr)
+  Botega.fetchPoolInfo(poolAddress, function(poolInfo, infoErr, collector)
     if not poolInfo then
+      -- Remove from pending collections
+      collector.pendingCollections[poolAddress] = nil
       callback(nil, infoErr)
       return
     end
@@ -209,6 +222,8 @@ function Botega.collectPoolData(poolAddress, callback)
     -- Normalize the data using only poolInfo
     local normalizedData = Botega.normalizePoolData(poolAddress, poolInfo.Tags)
     if not normalizedData then
+      -- Remove from pending collections
+      collector.pendingCollections[poolAddress] = nil
       callback(nil, "Failed to normalize pool data")
       return
     end
@@ -219,12 +234,14 @@ function Botega.collectPoolData(poolAddress, callback)
       reserve_b = "0"
     }
 
+    -- Remove from pending collections
+    collector.pendingCollections[poolAddress] = nil
     callback(normalizedData)
   end)
 end
 
 -- Collect data from multiple Botega pools
-function Botega.collectAllPoolsData(poolAddresses, finalCallback)
+function Botega.collectAllPoolsData(poolAddresses, collector, finalCallback)
   local results = {
     pools = {},
     tokens = {},
@@ -239,7 +256,7 @@ function Botega.collectAllPoolsData(poolAddresses, finalCallback)
   end
 
   for _, poolAddress in ipairs(poolAddresses) do
-    Botega.collectPoolData(poolAddress, function(poolData, err)
+    Botega.collectPoolData(poolAddress, collector, function(poolData, err)
       pendingPools = pendingPools - 1
 
       if poolData then

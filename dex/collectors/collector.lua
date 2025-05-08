@@ -46,7 +46,7 @@ function Collector.collectFromDex(source, poolAddresses, callback)
 
 
   Logger.info("Collecting data from " .. source, { poolCount = #poolAddresses })
-  collector.collectAllPoolsData(poolAddresses, function(results)
+  collector.collectAllPoolsData(poolAddresses, Collector, function(results)
     -- Remove from pending operations
     Logger.info("Collection completed for " .. source)
     callback(results)
