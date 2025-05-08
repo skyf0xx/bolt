@@ -29,7 +29,13 @@ Handlers.add('populate', Handlers.utils.hasMatchingTag('Action', 'Populate'), fu
           Target = BOLT_PROTOCOL,
           Action = "BuildGraph",
         }).onReply(function(response)
-          print('Aggregator has been Populated')
+          ao.send({
+            Target = BOLT_PROTOCOL,
+            Action = "RefreshReserves",
+            ForceFresh = 'true'
+          }).onReply(function(response)
+            print('Aggregator has been Populated with fresh reserves')
+          end)
         end)
       end)
     end)
