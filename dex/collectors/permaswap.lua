@@ -125,11 +125,23 @@ function Permaswap.normalizePoolData(poolAddress, poolData)
 end
 
 -- Collect data for a single Permaswap pool
-function Permaswap.collectPoolData(poolAddress, callback)
+function Permaswap.collectPoolData(poolAddress, collector, callback)
   Logger.info("Collecting data for pool", { pool = poolAddress })
+
+  -- Add to pending collections
+  collector.pendingCollections[poolAddress] = {
+    source = Constants.SOURCE.PERMASWAP,
+    startTime = os.time(),
+    poolId = poolAddress,
+    poolCount = 1,
+    completedPools = 0,
+    callback = callback
+  }
 
   Permaswap.fetchPoolInfo(poolAddress, function(poolInfo, err)
     if not poolInfo then
+      -- Remove from pending collections
+      collector.pendingCollections[poolAddress] = nil
       callback(nil, err)
       return
     end
@@ -137,6 +149,8 @@ function Permaswap.collectPoolData(poolAddress, callback)
     local normalizedData = Permaswap.normalizePoolData(poolAddress, poolInfo)
 
     if not normalizedData then
+      -- Remove from pending collections
+      collector.pendingCollections[poolAddress] = nil
       callback(nil, "Failed to normalize pool data")
       return
     end
@@ -147,12 +161,14 @@ function Permaswap.collectPoolData(poolAddress, callback)
       reserve_b = poolInfo.PY or "0"
     }
 
+    -- Remove from pending collections
+    collector.pendingCollections[poolAddress] = nil
     callback(normalizedData)
   end)
 end
 
 -- Collect data from multiple Permaswap pools
-function Permaswap.collectAllPoolsData(poolAddresses, finalCallback)
+function Permaswap.collectAllPoolsData(poolAddresses, collector, finalCallback)
   local results = {
     pools = {},
     tokens = {},
@@ -167,7 +183,7 @@ function Permaswap.collectAllPoolsData(poolAddresses, finalCallback)
   end
 
   for _, poolAddress in ipairs(poolAddresses) do
-    Permaswap.collectPoolData(poolAddress, function(poolData, err)
+    Permaswap.collectPoolData(poolAddress, collector, function(poolData, err)
       pendingPools = pendingPools - 1
 
       if poolData then
