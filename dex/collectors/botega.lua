@@ -146,25 +146,37 @@ function Botega.getSwapOutput(poolAddress, tokenIn, amountIn, userAddress, callb
 end
 
 -- Normalize pool data from Botega format to our standard format
-function Botega.normalizePoolData(poolAddress, poolInfo, pairInfo, feeInfo)
-  if not poolInfo or not pairInfo then
+function Botega.normalizePoolData(poolAddress, poolInfo)
+  if not poolInfo then
     return nil, "Missing required pool data"
   end
 
-  -- Convert fee from percentage to basis points
-  local feeBps = 0
-  if poolInfo.FeeBps then
-    feeBps = tonumber(poolInfo.FeeBps) or feeBps
-  elseif feeInfo and feeInfo.totalFeePercentage then
-    feeBps = math.floor(feeInfo.totalFeePercentage * 100) -- Convert percentage to basis points
-  end
+  -- Extract token information directly from poolInfo
+  local tokenA = {
+    id = poolInfo.TokenA,
+    symbol = "",
+    name = "",
+    decimals = tonumber(poolInfo.Denomination),
+    logo_url = ""
+  }
+
+  local tokenB = {
+    id = poolInfo.TokenB,
+    symbol = "",
+    name = "",
+    decimals = tonumber(poolInfo.Denomination),
+    logo_url = ""
+  }
+
+  -- Extract fee directly from poolInfo
+  local feeBps = tonumber(poolInfo.FeeBps) or 25 -- Default to 25 bps if not found
 
   -- Normalize pool format
   local normalizedPool = {
     id = poolAddress,
     source = Constants.SOURCE.BOTEGA,
-    token_a_id = pairInfo.tokenA,
-    token_b_id = pairInfo.tokenB,
+    token_a_id = tokenA.id,
+    token_b_id = tokenB.id,
     fee_bps = feeBps,
     status = "active", -- Default to active, can be updated based on AMM status
 
@@ -177,23 +189,6 @@ function Botega.normalizePoolData(poolAddress, poolInfo, pairInfo, feeInfo)
     type = poolInfo.Type
   }
 
-  -- Extract token information (limited, need to be supplemented later)
-  local tokenA = {
-    id = pairInfo.tokenA,
-    symbol = "", -- Not available in basic info, need separate call
-    name = "",
-    decimals = tonumber(poolInfo.Denomination) or Constants.NUMERIC.DECIMALS,
-    logo_url = ""
-  }
-
-  local tokenB = {
-    id = pairInfo.tokenB,
-    symbol = "", -- Not available in basic info, need separate call
-    name = "",
-    decimals = tonumber(poolInfo.Denomination) or Constants.NUMERIC.DECIMALS,
-    logo_url = ""
-  }
-
   return {
     pool = normalizedPool,
     tokens = { tokenA, tokenB }
@@ -204,53 +199,27 @@ end
 function Botega.collectPoolData(poolAddress, callback)
   Logger.info("Collecting data for pool", { pool = poolAddress })
 
-  -- Get basic pool info
+  -- Get basic pool info only
   Botega.fetchPoolInfo(poolAddress, function(poolInfo, infoErr)
     if not poolInfo then
       callback(nil, infoErr)
       return
     end
 
-    -- Get token pair info
-    Botega.fetchPair(poolAddress, function(pairInfo, pairErr)
-      if not pairInfo then
-        callback(nil, pairErr)
-        return
-      end
+    -- Normalize the data using only poolInfo
+    local normalizedData = Botega.normalizePoolData(poolAddress, poolInfo.Tags)
+    if not normalizedData then
+      callback(nil, "Failed to normalize pool data")
+      return
+    end
 
-      -- Get fee info
-      Botega.fetchFeePercentage(poolAddress, false, function(feeInfo, feeErr)
-        if not feeInfo then
-          Logger.warn("Failed to fetch fee info, using default", { error = feeErr })
-          -- Continue without fee info, will use default or from poolInfo
-        end
+    -- Set empty reserves placeholder (will need a separate update if reserves are needed)
+    normalizedData.reserves = {
+      reserve_a = "0",
+      reserve_b = "0"
+    }
 
-        -- Normalize the data
-        local normalizedData = Botega.normalizePoolData(poolAddress, poolInfo, pairInfo, feeInfo)
-        if not normalizedData then
-          callback(nil, "Failed to normalize pool data")
-          return
-        end
-
-        -- Get reserves
-        Botega.fetchReserves(poolAddress, function(reserves, reservesErr)
-          if reserves then
-            normalizedData.reserves = {
-              reserve_a = reserves.reserveA,
-              reserve_b = reserves.reserveB
-            }
-          else
-            Logger.warn("Failed to fetch reserves", { error = reservesErr })
-            normalizedData.reserves = {
-              reserve_a = "0",
-              reserve_b = "0"
-            }
-          end
-
-          callback(normalizedData)
-        end)
-      end)
-    end)
+    callback(normalizedData)
   end)
 end
 
