@@ -377,7 +377,7 @@ function QuoteGenerator.createSwapOrder(quote, userAddress, callback)
   -- Add additional information for the swap order
   local order = Utils.deepCopy(quote)
   order.user_address = userAddress
-  order.order_id = "order_" .. os.time() .. "_" .. math.random(1000, 9999)
+  order.order_id = "order_" .. os.time() .. "_" .. userAddress
   order.status = "created"
   order.created_at = os.time()
 
