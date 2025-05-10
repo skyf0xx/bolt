@@ -3,7 +3,7 @@ local Pools = {}
 Pools.permaswap = {
   'VdbIsznFtQtStQXr7ICSsX2yWhHJwougW3dGhIGRam0',
   '8JC9QewRw4wDnE59LomfhakoBrB_LHkN3oDvU3xXNbE',
-  --[['8IR_EbhFifdWMt_AedjMFxSu4BAAXSjma7CWwhwVYOI',
+  '8IR_EbhFifdWMt_AedjMFxSu4BAAXSjma7CWwhwVYOI',
   'fdbtsVlE8F9qHHO6FUw0Gaxk-y3yIiWQDgcs7mjflIo',
   'n_O1RWBrvIc_6ogPSBa0vAtEUYkaerolpX-54zXKeqM',
   'xRt-J-awbZqQ7IgzrM5yxRCS9ub0oxnyjyfmRuVU_hg',
@@ -226,7 +226,7 @@ Pools.permaswap = {
   'dcPJBlPMjcUYYx-ZfVXw4IoM9ByS4LSMtsg5J6lxm7Q',
   'I6N3Z56kKJmDLf1_wBZdu3oAAl1zW52IRAF-wSf3KyI',
   'Ap2oJWV_ocoytFKviOxO3conGEGi12S6r2tnA1bgUo8',
-  'JViZlrsjcGXJadIMoBWj8NEfK1zBCeQtC64IvhyDsSs' ]]
+  'JViZlrsjcGXJadIMoBWj8NEfK1zBCeQtC64IvhyDsSs'
 }
 
 Pools.botega = {
@@ -234,7 +234,7 @@ Pools.botega = {
   'bMyl_dysjbyKJBbaT9u9RwgTd527H3WcSvVyGugljvM',
   '1P7Zl2FDdA09HTXDj0DxKatryPhRj4ES2JO8xXCcV78',
   'Bv5mfnx5Ln2BU60inXPnMOGMwecJXadV4oqw7iwjzSk',
-  --[['9JgTfmz0d32tRSp4Z5ZNQygAPoDjWfEvdiWRsx4ECWU',
+  '9JgTfmz0d32tRSp4Z5ZNQygAPoDjWfEvdiWRsx4ECWU',
   'BHxdWnUKGlSjSOe5M6gDja4zUokHLaqoH7ykWS2y_aA',
   'wAxZpk1ZHezVlvm7xvYm4dDzI5DwSaaAaLPhHFxdr8w',
   'EJX9HmxurbeXUCaoTTo38P0Wbc5mNrLNrfW3cSg_3rM',
@@ -525,7 +525,7 @@ Pools.botega = {
   'lurwC6ZbuSQuPnamnGB-CgRx4OyuQqeNQq4EqoIZu1A',
   '1gv__tYVymq5HpwvgSMUAHXtnxm6tiqgMisYp2-d4YA',
   'rASh3F_II9K9srEE2dme11jGeTxyHiV7B7mx7CSaHX8',
-  '0h-5sRnIYjk4Xiyv6OoCxgVs2GNo2H4kN_mSAhfrpxM']]
+  '0h-5sRnIYjk4Xiyv6OoCxgVs2GNo2H4kN_mSAhfrpxM'
 }
 
 
