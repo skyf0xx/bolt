@@ -7,8 +7,18 @@ local Utils = require('dex.utils.utils')
 local Permaswap = {}
 
 -- Fetch basic information about a Permaswap pool
-function Permaswap.fetchPoolInfo(poolAddress, callback)
-  Logger.debug("Fetching pool info", { pool = poolAddress })
+function Permaswap.fetchPoolInfo(poolAddress, collector, callback)
+  Logger.debug("Fetching pool info with tracking", { pool = poolAddress })
+
+  -- Add to pending collections
+  collector.pendingCollections[poolAddress] = {
+    source = Constants.SOURCE.PERMASWAP,
+    startTime = os.time(),
+    poolId = poolAddress,
+    poolCount = 1,
+    completedPools = 0,
+    callback = callback
+  }
 
   ao.send({
     Target = poolAddress,
@@ -19,6 +29,8 @@ function Permaswap.fetchPoolInfo(poolAddress, callback)
         pool = poolAddress,
         error = response.Error
       })
+      -- Remove from pending collections on error
+      collector.pendingCollections[poolAddress] = nil
       callback(nil, response.Error)
     else
       callback(response)
@@ -128,20 +140,8 @@ end
 function Permaswap.collectPoolData(poolAddress, collector, callback)
   Logger.info("Collecting data for pool", { pool = poolAddress })
 
-  -- Add to pending collections
-  collector.pendingCollections[poolAddress] = {
-    source = Constants.SOURCE.PERMASWAP,
-    startTime = os.time(),
-    poolId = poolAddress,
-    poolCount = 1,
-    completedPools = 0,
-    callback = callback
-  }
-
-  Permaswap.fetchPoolInfo(poolAddress, function(poolInfo, err)
+  Permaswap.fetchPoolInfo(poolAddress, collector, function(poolInfo, err)
     if not poolInfo then
-      -- Remove from pending collections
-      collector.pendingCollections[poolAddress] = nil
       callback(nil, err)
       return
     end

@@ -6,8 +6,18 @@ local Utils = require('dex.utils.utils')
 local Botega = {}
 
 -- Fetch basic information about a Botega pool
-function Botega.fetchPoolInfo(poolAddress, callback)
-  Logger.debug("Fetching pool info", { pool = poolAddress })
+function Botega.fetchPoolInfo(poolAddress, collector, callback)
+  Logger.debug("Fetching pool info with tracking", { pool = poolAddress })
+
+  -- Add to pending collections
+  collector.pendingCollections[poolAddress] = {
+    source = Constants.SOURCE.BOTEGA,
+    startTime = os.time(),
+    poolId = poolAddress,
+    poolCount = 1,
+    completedPools = 0,
+    callback = callback
+  }
 
   ao.send({
     Target = poolAddress,
@@ -18,6 +28,8 @@ function Botega.fetchPoolInfo(poolAddress, callback)
         pool = poolAddress,
         error = response.Error
       })
+      -- Remove from pending collections on error
+      collector.pendingCollections[poolAddress] = nil
       callback(nil, response.Error)
     else
       callback(response)
@@ -196,25 +208,12 @@ function Botega.normalizePoolData(poolAddress, poolInfo)
 end
 
 -- Collect data for a single Botega pool
--- Collect data for a single Botega pool
 function Botega.collectPoolData(poolAddress, collector, callback)
   Logger.info("Collecting data for pool", { pool = poolAddress })
 
-  -- Add to pending collections
-  collector.pendingCollections[poolAddress] = {
-    source = Constants.SOURCE.BOTEGA,
-    startTime = os.time(),
-    poolId = poolAddress,
-    poolCount = 1,
-    completedPools = 0,
-    callback = callback
-  }
-
   -- Get basic pool info only
-  Botega.fetchPoolInfo(poolAddress, function(poolInfo, infoErr, collector)
+  Botega.fetchPoolInfo(poolAddress, collector, function(poolInfo, infoErr)
     if not poolInfo then
-      -- Remove from pending collections
-      collector.pendingCollections[poolAddress] = nil
       callback(nil, infoErr)
       return
     end
