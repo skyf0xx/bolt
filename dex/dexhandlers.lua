@@ -62,7 +62,7 @@ function DexHandlers.handleUpdateTokenInfo(msg)
   Logger.info("Updating token information", { total = totalTokens })
 
   -- Function to update a token safely
-  local function updateTokenSafely(db, token, newInfo)
+  local function updateTokenDB(db, token, newInfo)
     local currentTime = os.time()
 
     -- Prepare new token data
@@ -121,7 +121,7 @@ function DexHandlers.handleUpdateTokenInfo(msg)
         Logger.warn("Failed to get token info", { id = token.id, error = response.Error })
       else
         -- Update token with received information
-        local success, err = updateTokenSafely(Components.collector.db, token, response)
+        local success, err = updateTokenDB(Components.collector.db, token, response)
 
         if success then
           updatedTokens = updatedTokens + 1
