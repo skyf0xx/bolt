@@ -195,31 +195,6 @@ function Collector.saveToDatabase(data, callback)
     callback(true)
     return
   end
-
-  -- Save reserves
-  for poolId, reserve in pairs(data.reserves) do
-    local reserveA = reserve.reserve_a or "0"
-    local reserveB = reserve.reserve_b or "0"
-
-    local reserveSuccess, reserveErr = PoolRepository.updateReserves(db, poolId, reserveA, reserveB)
-    pendingReserves = pendingReserves - 1
-
-    if not reserveSuccess then
-      Logger.warn("Failed to update reserves for pool", { pool = poolId, error = reserveErr })
-      -- Continue with other reserves
-    end
-
-    -- If all reserves are processed, commit and return
-    if pendingReserves == 0 then
-      db:exec("COMMIT")
-      Logger.info("Data saved to database", {
-        tokens = #data.tokens,
-        pools = #data.pools,
-        reserves = Utils.tableSize(data.reserves)
-      })
-      callback(true)
-    end
-  end
 end
 
 -- Get pools that need reserve refresh
