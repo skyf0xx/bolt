@@ -53,14 +53,13 @@ function DexHandlers.handleUpdateTokenInfo(msg)
   end
 
   -- Track progress
-  local pendingTokens = math.min(batchSize, #tokens)
   local totalTokens = #tokens
   local processedTokens = 0
   local updatedTokens = 0
   local failedTokens = 0
   local errors = {}
 
-  Logger.info("Updating token information", { count = pendingTokens, total = totalTokens })
+  Logger.info("Updating token information", { total = totalTokens })
 
   -- Function to update a token safely
   local function updateTokenSafely(db, token, newInfo)
@@ -106,7 +105,7 @@ function DexHandlers.handleUpdateTokenInfo(msg)
   end
 
   -- Process tokens in the current batch
-  for i = 1, pendingTokens do
+  for i = 1, totalTokens do
     local token = tokens[i]
 
     -- Call the blockchain to get token info
@@ -139,7 +138,7 @@ function DexHandlers.handleUpdateTokenInfo(msg)
       end
 
       -- If all tokens in this batch are processed, send response
-      if processedTokens >= pendingTokens then
+      if processedTokens >= totalTokens then
         msg.reply({
           Action = msg.Action .. "Response",
           Status = "Success",
@@ -148,7 +147,6 @@ function DexHandlers.handleUpdateTokenInfo(msg)
           Updated = tostring(updatedTokens),
           Failed = tostring(failedTokens),
           Errors = Utils.jsonEncode(errors),
-          RemainingTokens = tostring(totalTokens - processedTokens)
         })
       end
     end)
