@@ -383,22 +383,10 @@ function Collector.flushPendingCollections(maxAge, forced)
         poolCount = operation.poolCount,
         completedPools = operation.completedPools or 0
       })
+      local err = "Collection timed out and was manually flushed"
 
-      -- Create a partial result to return
-      local partialResults = {
-        pools = {},
-        tokens = {},
-        reserves = {},
-        errors = {
-          message = "Collection timed out or was manually flushed",
-          timeElapsed = currentTime - operation.startTime,
-          operationId = id
-        }
-      }
-
-      -- Call the original callback with partial results
       if operation.callback then
-        operation.callback(partialResults)
+        operation.callback(nil, err)
       end
 
       -- Remove from pending list

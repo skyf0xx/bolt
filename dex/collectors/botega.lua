@@ -258,7 +258,7 @@ function Botega.collectAllPoolsData(poolAddresses, collector, finalCallback)
     Botega.collectPoolData(poolAddress, collector, function(poolData, err)
       pendingPools = pendingPools - 1
 
-      if poolData then
+      if poolData and not err then
         table.insert(results.pools, poolData.pool)
 
         -- Add tokens
