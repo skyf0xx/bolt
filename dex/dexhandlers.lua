@@ -4,6 +4,7 @@ Logger = Logger.createLogger("DexHandlers")
 local Utils = require('dex.utils.utils')
 local TokenRepository = require('dex.db.token_repository')
 local PoolRepository = require('dex.db.pool_repository')
+local SqlAccessor = require('dex.utils.sql_accessor')
 local Init = require('dex.init')
 local Pools = require('dex.db.pools')
 local DexHandlers = {}
@@ -30,11 +31,8 @@ function DexHandlers.handleUpdateTokenInfo(msg)
     return
   end
 
-  local SqlAccessor = require('dex.utils.sql_accessor')
-  local Utils = require('dex.utils.utils')
-  local TokenRepository = require('dex.db.token_repository')
-  local Logger = require('dex.utils.logger')
-  Logger = Logger.createLogger("TokenUpdater")
+
+
 
   local batchSize = msg.BatchSize or 10
   local forceUpdate = msg.ForceUpdate or false
