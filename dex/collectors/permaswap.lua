@@ -202,7 +202,7 @@ function Permaswap.collectAllPoolsData(poolAddresses, collector, finalCallback)
       end
 
       -- Check if all pools have been processed
-      if pendingPools == 0 then
+      if pendingPools <= 0 then --<= 0 in case we flush one and it shows up later
         -- Convert tokens table to array
         local tokensArray = {}
         for _, token in pairs(results.tokens) do
