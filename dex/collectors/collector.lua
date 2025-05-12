@@ -12,6 +12,7 @@ local Collector = {}
 -- Initialize the collector with database connection
 function Collector.init(db)
   Collector.db = db
+  Collector.pendingCollections = {} -- Track pending collections with timestamps
   Logger.info("Collector initialized")
   return Collector
 end
@@ -43,8 +44,11 @@ function Collector.collectFromDex(source, poolAddresses, callback)
     return
   end
 
+
   Logger.info("Collecting data from " .. source, { poolCount = #poolAddresses })
-  collector.collectAllPoolsData(poolAddresses, function(results)
+  collector.collectAllPoolsData(poolAddresses, Collector, function(results)
+    -- Remove from pending operations
+    Logger.info("Collection completed for " .. source)
     callback(results)
   end)
 end
@@ -89,11 +93,12 @@ function Collector.collectAll(poolList, finalCallback)
     return
   end
 
+
+
   -- Collect from each source
   for source, addresses in pairs(poolsBySource) do
     Collector.collectFromDex(source, addresses, function(sourceResults)
       pendingSources = pendingSources - 1
-
       -- Merge results
       for _, pool in ipairs(sourceResults.pools) do
         table.insert(results.pools, pool)
@@ -190,31 +195,6 @@ function Collector.saveToDatabase(data, callback)
     callback(true)
     return
   end
-
-  -- Save reserves
-  for poolId, reserve in pairs(data.reserves) do
-    local reserveA = reserve.reserve_a or "0"
-    local reserveB = reserve.reserve_b or "0"
-
-    local reserveSuccess, reserveErr = PoolRepository.updateReserves(db, poolId, reserveA, reserveB)
-    pendingReserves = pendingReserves - 1
-
-    if not reserveSuccess then
-      Logger.warn("Failed to update reserves for pool", { pool = poolId, error = reserveErr })
-      -- Continue with other reserves
-    end
-
-    -- If all reserves are processed, commit and return
-    if pendingReserves == 0 then
-      db:exec("COMMIT")
-      Logger.info("Data saved to database", {
-        tokens = #data.tokens,
-        pools = #data.pools,
-        reserves = Utils.tableSize(data.reserves)
-      })
-      callback(true)
-    end
-  end
 end
 
 -- Get pools that need reserve refresh
@@ -255,7 +235,7 @@ end
 function Collector.calculatePathOutput(path, inputAmount, callback)
   local result = {
     inputAmount = inputAmount,
-    outputAmount = inputAmount,
+    amount_out = inputAmount,
     steps = {}
   }
 
@@ -263,7 +243,7 @@ function Collector.calculatePathOutput(path, inputAmount, callback)
   local function processStep(index, currentInput)
     if index > #path then
       -- All steps processed, return result
-      result.outputAmount = currentInput
+      result.amount_out = currentInput
       callback(result)
       return
     end
@@ -272,6 +252,7 @@ function Collector.calculatePathOutput(path, inputAmount, callback)
     local poolId = step.pool_id
     local tokenIn = step.from
     local tokenOut = step.to
+
 
     -- Get pool data
     local pool = PoolRepository.getPool(Collector.db, poolId)
@@ -289,7 +270,7 @@ function Collector.calculatePathOutput(path, inputAmount, callback)
           return
         end
 
-        local outputAmount = response.amountOut
+        local amount_out = response.amount_out
 
         -- Add step to result
         table.insert(result.steps, {
@@ -298,12 +279,12 @@ function Collector.calculatePathOutput(path, inputAmount, callback)
           token_in = tokenIn,
           token_out = tokenOut,
           amount_in = currentInput,
-          amount_out = outputAmount,
+          amount_out = amount_out,
           fee_bps = pool.fee_bps
         })
 
         -- Process next step
-        processStep(index + 1, outputAmount)
+        processStep(index + 1, amount_out)
       end)
     elseif pool.source == Constants.SOURCE.BOTEGA then
       -- Use Botega API instead of formula
@@ -313,7 +294,7 @@ function Collector.calculatePathOutput(path, inputAmount, callback)
           return
         end
 
-        local outputAmount = response.amountOut
+        local amount_out = response.amount_out
 
         -- Add step to result
         table.insert(result.steps, {
@@ -322,12 +303,12 @@ function Collector.calculatePathOutput(path, inputAmount, callback)
           token_in = tokenIn,
           token_out = tokenOut,
           amount_in = currentInput,
-          amount_out = outputAmount,
+          amount_out = amount_out,
           fee_bps = pool.fee_bps
         })
 
         -- Process next step
-        processStep(index + 1, outputAmount)
+        processStep(index + 1, amount_out)
       end)
     else
       callback(nil, "Unsupported pool source: " .. tostring(pool.source))
@@ -348,6 +329,71 @@ function Collector.executePathSwap(path, inputAmount, minOutputAmount, userAddre
 
   Logger.warn("Path execution not fully implemented, would execute multiple swaps")
   callback(nil, "Multi-pool swaps require cross-process coordination")
+end
+
+-- Flush pending collections that have been running for too long
+function Collector.flushPendingCollections(maxAge, forced)
+  maxAge = maxAge or 60 -- Default to 60 seconds
+  local flushedCount = 0
+  local currentTime = os.time()
+
+  -- Create a list of operations to flush
+  local toFlush = {}
+
+  for id, operation in pairs(Collector.pendingCollections) do
+    if forced or (currentTime - operation.startTime) > maxAge then
+      table.insert(toFlush, id)
+    end
+  end
+
+  -- Flush each pending operation
+  for _, id in ipairs(toFlush) do
+    local operation = Collector.pendingCollections[id]
+    if operation then
+      Logger.warn("Flushing stalled collection", {
+        id = id,
+        source = operation.source,
+        pendingFor = currentTime - operation.startTime,
+        poolId = operation.poolId,
+        poolCount = operation.poolCount,
+        completedPools = operation.completedPools or 0
+      })
+      local err = "Collection timed out and was manually flushed"
+
+      if operation.callback then
+        operation.callback(nil, err)
+      end
+
+      -- Remove from pending list
+      Collector.pendingCollections[id] = nil
+      flushedCount = flushedCount + 1
+    end
+  end
+
+  return {
+    flushedCount = flushedCount,
+    remainingCount = Utils.tableSize(Collector.pendingCollections),
+    pendingOperations = Collector.getPendingOperationsSummary()
+  }
+end
+
+-- Get a list of pending operations for diagnostic purposes
+function Collector.getPendingOperationsSummary()
+  local summary = {}
+  local currentTime = os.time()
+
+  for id, operation in pairs(Collector.pendingCollections) do
+    table.insert(summary, {
+      id = id,
+      source = operation.source,
+      runningTime = currentTime - operation.startTime,
+      poolCount = operation.poolCount,
+      completedPools = operation.completedPools or 0,
+      completedSources = operation.completedSources or 0
+    })
+  end
+
+  return summary
 end
 
 return Collector

@@ -7,8 +7,18 @@ local Utils = require('dex.utils.utils')
 local Permaswap = {}
 
 -- Fetch basic information about a Permaswap pool
-function Permaswap.fetchPoolInfo(poolAddress, callback)
-  Logger.debug("Fetching pool info", { pool = poolAddress })
+function Permaswap.fetchPoolInfo(poolAddress, collector, callback)
+  Logger.debug("Fetching pool info with tracking", { pool = poolAddress })
+
+  -- Add to pending collections
+  collector.pendingCollections[poolAddress] = {
+    source = Constants.SOURCE.PERMASWAP,
+    startTime = os.time(),
+    poolId = poolAddress,
+    poolCount = 1,
+    completedPools = 0,
+    callback = callback
+  }
 
   ao.send({
     Target = poolAddress,
@@ -19,6 +29,8 @@ function Permaswap.fetchPoolInfo(poolAddress, callback)
         pool = poolAddress,
         error = response.Error
       })
+      -- Remove from pending collections on error
+      collector.pendingCollections[poolAddress] = nil
       callback(nil, response.Error)
     else
       callback(response)
@@ -63,7 +75,6 @@ function Permaswap.requestOrder(poolAddress, tokenIn, tokenOut, amountIn, callba
     TokenIn = tokenIn,
     TokenOut = tokenOut,
     AmountIn = tostring(amountIn),
-    --AmountOut = "1" --force an error if the pool is empty. TODO: deal with error
   }).onReply(function(response)
     if response.Error then
       Logger.error("Failed to get amount out", {
@@ -72,16 +83,11 @@ function Permaswap.requestOrder(poolAddress, tokenIn, tokenOut, amountIn, callba
       })
       callback(nil, response.Error)
     else
+      local data = Utils.jsonDecode(response.Data)
       callback({
-        amountOut = response.Amount,
-        outputAmount = response.Amount,
-        tokenIn = response.HolderAssetID,
-        tokenOut = response.AssetID,
-        fee = {
-          issuer = response.IssuerFee or "0",
-          holder = response.HolderFee or "0",
-          pool = response.PoolFee or "0"
-        }
+        amount_out = data.Amount,
+        tokenIn = data.HolderAssetID,
+        tokenOut = data.AssetID,
       })
     end
   end)
@@ -131,10 +137,10 @@ function Permaswap.normalizePoolData(poolAddress, poolData)
 end
 
 -- Collect data for a single Permaswap pool
-function Permaswap.collectPoolData(poolAddress, callback)
+function Permaswap.collectPoolData(poolAddress, collector, callback)
   Logger.info("Collecting data for pool", { pool = poolAddress })
 
-  Permaswap.fetchPoolInfo(poolAddress, function(poolInfo, err)
+  Permaswap.fetchPoolInfo(poolAddress, collector, function(poolInfo, err)
     if not poolInfo then
       callback(nil, err)
       return
@@ -143,6 +149,8 @@ function Permaswap.collectPoolData(poolAddress, callback)
     local normalizedData = Permaswap.normalizePoolData(poolAddress, poolInfo)
 
     if not normalizedData then
+      -- Remove from pending collections
+      collector.pendingCollections[poolAddress] = nil
       callback(nil, "Failed to normalize pool data")
       return
     end
@@ -153,12 +161,14 @@ function Permaswap.collectPoolData(poolAddress, callback)
       reserve_b = poolInfo.PY or "0"
     }
 
+    -- Remove from pending collections
+    collector.pendingCollections[poolAddress] = nil
     callback(normalizedData)
   end)
 end
 
 -- Collect data from multiple Permaswap pools
-function Permaswap.collectAllPoolsData(poolAddresses, finalCallback)
+function Permaswap.collectAllPoolsData(poolAddresses, collector, finalCallback)
   local results = {
     pools = {},
     tokens = {},
@@ -173,10 +183,10 @@ function Permaswap.collectAllPoolsData(poolAddresses, finalCallback)
   end
 
   for _, poolAddress in ipairs(poolAddresses) do
-    Permaswap.collectPoolData(poolAddress, function(poolData, err)
+    Permaswap.collectPoolData(poolAddress, collector, function(poolData, err)
       pendingPools = pendingPools - 1
 
-      if poolData then
+      if poolData and not err then
         table.insert(results.pools, poolData.pool)
 
         -- Add tokens
@@ -192,7 +202,7 @@ function Permaswap.collectAllPoolsData(poolAddresses, finalCallback)
       end
 
       -- Check if all pools have been processed
-      if pendingPools == 0 then
+      if pendingPools <= 0 then --<= 0 in case we flush one and it shows up later
         -- Convert tokens table to array
         local tokensArray = {}
         for _, token in pairs(results.tokens) do
@@ -230,10 +240,7 @@ function Permaswap.executeSwap(poolAddress, tokenIn, tokenOut, amountIn, minAmou
     AmountIn = tostring(amountIn)
   }
 
-  -- Add minimum amount out if specified
-  if minAmountOut then
-    request.AmountOut = tostring(minAmountOut)
-  end
+
 
   ao.send(request).onReply(function(response)
     if response.Error then

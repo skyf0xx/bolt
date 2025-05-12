@@ -48,6 +48,10 @@ Handlers.add("CollectData",
   Handlers.utils.hasMatchingTag("Action", "CollectData"),
   DexHandlers.handleCollectData)
 
+Handlers.add("FlushCollectors",
+  Handlers.utils.hasMatchingTag("Action", "FlushCollectors"),
+  DexHandlers.handleFlushCollectors)
+
 Handlers.add("UpdateTokenInfo",
   Handlers.utils.hasMatchingTag("Action", "UpdateTokenInfo"),
   DexHandlers.handleUpdateTokenInfo)
