@@ -191,7 +191,7 @@ function PathFinder.findArbitrageOpportunities(startTokenId, inputAmount, callba
 
       if result then
         local profitAmount = BigDecimal.subtract(
-          BigDecimal.new(result.outputAmount),
+          BigDecimal.new(result.amount_out),
           BigDecimal.new(inputAmount)
         )
 
@@ -206,7 +206,7 @@ function PathFinder.findArbitrageOpportunities(startTokenId, inputAmount, callba
           table.insert(opportunities, {
             cycle = cycle,
             inputAmount = inputAmount,
-            outputAmount = result.outputAmount,
+            amount_out = result.amount_out,
             profitAmount = profitAmount.value,
             profitBps = profitBps,
             steps = result.steps
@@ -252,7 +252,6 @@ function PathFinder.findDirectSwaps(sourceTokenId, targetTokenId, inputAmount, c
 
   directPools = uniquePools
 
-  -- Remove debug prints
   if #directPools == 0 then
     Logger.debug("No direct pools found")
     callback(nil)
@@ -304,7 +303,7 @@ function PathFinder.findDirectSwaps(sourceTokenId, targetTokenId, inputAmount, c
           path = path,
           totalFee = path[1].fee_bps,
           inputAmount = inputAmount,
-          outputAmount = result.outputAmount,
+          amount_out = result.amount_out,
           steps = result.steps
         }
       else
@@ -317,7 +316,7 @@ function PathFinder.findDirectSwaps(sourceTokenId, targetTokenId, inputAmount, c
       if pendingPaths == 0 then
         -- Sort by output amount (descending)
         table.sort(pathResults, function(a, b)
-          return BigDecimal.new(a.outputAmount).value > BigDecimal.new(b.outputAmount).value
+          return BigDecimal.new(a.amount_out).value > BigDecimal.new(b.amount_out).value
         end)
 
         if #pathResults > 0 then
@@ -345,7 +344,7 @@ function PathFinder.findOptimalSwap(sourceTokenId, targetTokenId, inputAmount, o
   PathFinder.findDirectSwaps(sourceTokenId, targetTokenId, inputAmount, function(directResults)
     if directResults then
       Logger.info("Using direct swap path", {
-        outputAmount = directResults.bestPath.outputAmount,
+        amount_out = directResults.bestPath.amount_out,
         poolId = directResults.bestPath.path[1].pool_id
       })
       callback(directResults)
@@ -398,7 +397,7 @@ function PathFinder.findOptimalSwap(sourceTokenId, targetTokenId, inputAmount, o
             path = candidate.path,
             totalFee = candidate.totalFee,
             inputAmount = inputAmount,
-            outputAmount = result.outputAmount,
+            amount_out = result.amount_out,
             steps = result.steps
           }
         else
@@ -409,7 +408,7 @@ function PathFinder.findOptimalSwap(sourceTokenId, targetTokenId, inputAmount, o
         if pendingPaths == 0 then
           -- Sort by output amount (descending)
           table.sort(pathResults, function(a, b)
-            return BigDecimal.new(a.outputAmount).value > BigDecimal.new(b.outputAmount).value
+            return BigDecimal.new(a.amount_out).value > BigDecimal.new(b.amount_out).value
           end)
 
           callback({

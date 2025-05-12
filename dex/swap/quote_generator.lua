@@ -43,17 +43,17 @@ function QuoteGenerator.generateQuote(path, inputAmount, callback, preCalculated
     -- Use pre-calculated results if available, otherwise calculate
     if preCalculated then
       local result = {
-        outputAmount = preCalculated.outputAmount,
+        amount_out = preCalculated.amount_out,
         steps = preCalculated.steps
       }
 
 
       -- Format amounts for display
       local formattedInputAmount = Utils.formatTokenAmount(inputAmount, sourceDecimals)
-      local formattedOutputAmount = Utils.formatTokenAmount(result.outputAmount, targetDecimals)
+      local formattedOutputAmount = Utils.formatTokenAmount(result.amount_out, targetDecimals)
 
       -- Make sure we handle both property naming conventions
-      local outputAmount = result.outputAmount
+      local amount_out = result.amount_out
 
 
 
@@ -78,8 +78,7 @@ function QuoteGenerator.generateQuote(path, inputAmount, callback, preCalculated
         source_token = tokenInfo and tokenInfo.source or { id = sourceTokenId },
         target_token = tokenInfo and tokenInfo.target or { id = targetTokenId },
         input_amount = inputAmount,
-        output_amount = outputAmount,
-        amount_out = outputAmount,
+        amount_out = amount_out,
         formatted_input = formattedInputAmount,
         formatted_output = formattedOutputAmount,
         route = {
@@ -90,11 +89,6 @@ function QuoteGenerator.generateQuote(path, inputAmount, callback, preCalculated
         expiry = os.time() + Constants.TIME.RESERVE_CACHE_EXPIRY
       }
 
-      -- Add slippage-adjusted output amounts
-      quote.minimum_received = QuoteGenerator.applySlippage(
-        outputAmount,
-        Constants.NUMERIC.DEFAULT_SLIPPAGE_TOLERANCE
-      )
 
       -- Generate human-readable route description
       quote.route_description = QuoteGenerator.generateRouteDescription(
@@ -114,10 +108,10 @@ function QuoteGenerator.generateQuote(path, inputAmount, callback, preCalculated
 
         -- Format amounts for display
         local formattedInputAmount = Utils.formatTokenAmount(inputAmount, sourceDecimals)
-        local formattedOutputAmount = Utils.formatTokenAmount(result.outputAmount, targetDecimals)
+        local formattedOutputAmount = Utils.formatTokenAmount(result.amount_out, targetDecimals)
 
 
-        local outputAmount = result.outputAmount
+        local amount_out = result.amount_out
 
 
         -- Extract sources used in the path
@@ -141,8 +135,7 @@ function QuoteGenerator.generateQuote(path, inputAmount, callback, preCalculated
           source_token = tokenInfo and tokenInfo.source or { id = sourceTokenId },
           target_token = tokenInfo and tokenInfo.target or { id = targetTokenId },
           input_amount = inputAmount,
-          output_amount = outputAmount,
-          amount_out = outputAmount,
+          amount_out = amount_out,
           formatted_input = formattedInputAmount,
           formatted_output = formattedOutputAmount,
 
@@ -154,11 +147,6 @@ function QuoteGenerator.generateQuote(path, inputAmount, callback, preCalculated
           expiry = os.time() + Constants.TIME.RESERVE_CACHE_EXPIRY
         }
 
-        -- Add slippage-adjusted output amounts
-        quote.minimum_received = QuoteGenerator.applySlippage(
-          outputAmount,
-          Constants.NUMERIC.DEFAULT_SLIPPAGE_TOLERANCE
-        )
 
         -- Generate human-readable route description
         quote.route_description = QuoteGenerator.generateRouteDescription(
@@ -171,16 +159,6 @@ function QuoteGenerator.generateQuote(path, inputAmount, callback, preCalculated
       end)
     end
   end)
-end
-
--- Apply slippage tolerance to an output amount
-function QuoteGenerator.applySlippage(amount, slippageBps)
-  local bdAmount = BigDecimal.new(amount)
-  local bdSlippageFactor = BigDecimal.divide(
-    BigDecimal.new(Constants.NUMERIC.BASIS_POINTS_MULTIPLIER - slippageBps),
-    BigDecimal.new(Constants.NUMERIC.BASIS_POINTS_MULTIPLIER)
-  )
-  return BigDecimal.multiply(bdAmount, bdSlippageFactor).value
 end
 
 -- Get token pair information by IDs
@@ -227,7 +205,7 @@ function QuoteGenerator.generateRouteDescription(path, tokenInfo, steps)
   end
 
   for i, step in ipairs(path) do
-    local stepOutput = steps and steps[i] and (steps[i].amount_out or steps[i].amountOut) or "?"
+    local stepOutput = steps and steps[i] and (steps[i].amount_out or steps[i].amount_out) or "?"
     local sourceSymbol = tokenSymbols[step.from] or step.from:sub(1, 8)
     local targetSymbol = tokenSymbols[step.to] or step.to:sub(1, 8)
     local dexName = step.source:sub(1, 1):upper() .. step.source:sub(2) -- Capitalize first letter
@@ -274,7 +252,7 @@ function QuoteGenerator.generateComparativeQuotes(paths, inputAmount, calculatio
         if pendingPaths == 0 then
           -- Sort quotes by output amount (descending)
           table.sort(quotes, function(a, b)
-            return BigDecimal.new(a.outputAmount).value > BigDecimal.new(b.outputAmount).value
+            return BigDecimal.new(a.amount_out).value > BigDecimal.new(b.amount_out).value
           end)
 
           callback({
@@ -299,7 +277,7 @@ function QuoteGenerator.generateComparativeQuotes(paths, inputAmount, calculatio
         if pendingPaths == 0 then
           -- Sort quotes by output amount (descending)
           table.sort(quotes, function(a, b)
-            return BigDecimal.new(a.outputAmount).value > BigDecimal.new(b.outputAmount).value
+            return BigDecimal.new(a.amount_out).value > BigDecimal.new(b.amount_out).value
           end)
 
           callback({
@@ -342,7 +320,7 @@ function QuoteGenerator.findBestQuote(sourceTokenId, targetTokenId, inputAmount,
     for i, pathData in ipairs(result.paths) do
       paths[i] = pathData.path
       calculationResults[i] = {
-        outputAmount = pathData.outputAmount,
+        amount_out = pathData.amount_out,
         steps = pathData.steps
       }
     end
@@ -399,7 +377,7 @@ function QuoteGenerator.createSwapOrder(quote, userAddress, callback)
   -- Add additional information for the swap order
   local order = Utils.deepCopy(quote)
   order.user_address = userAddress
-  order.order_id = "order_" .. os.time() .. "_" .. math.random(1000, 9999)
+  order.order_id = "order_" .. os.time() .. "_" .. userAddress
   order.status = "created"
   order.created_at = os.time()
 

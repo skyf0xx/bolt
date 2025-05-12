@@ -4,8 +4,9 @@ Logger = Logger.createLogger("DexHandlers")
 local Utils = require('dex.utils.utils')
 local TokenRepository = require('dex.db.token_repository')
 local PoolRepository = require('dex.db.pool_repository')
+local SqlAccessor = require('dex.utils.sql_accessor')
 local Init = require('dex.init')
-
+local Pools = require('dex.db.pools')
 local DexHandlers = {}
 
 
@@ -30,11 +31,8 @@ function DexHandlers.handleUpdateTokenInfo(msg)
     return
   end
 
-  local SqlAccessor = require('dex.utils.sql_accessor')
-  local Utils = require('dex.utils.utils')
-  local TokenRepository = require('dex.db.token_repository')
-  local Logger = require('dex.utils.logger')
-  Logger = Logger.createLogger("TokenUpdater")
+
+
 
   local batchSize = msg.BatchSize or 10
   local forceUpdate = msg.ForceUpdate or false
@@ -55,17 +53,16 @@ function DexHandlers.handleUpdateTokenInfo(msg)
   end
 
   -- Track progress
-  local pendingTokens = math.min(batchSize, #tokens)
   local totalTokens = #tokens
   local processedTokens = 0
   local updatedTokens = 0
   local failedTokens = 0
   local errors = {}
 
-  Logger.info("Updating token information", { count = pendingTokens, total = totalTokens })
+  Logger.info("Updating token information", { total = totalTokens })
 
   -- Function to update a token safely
-  local function updateTokenSafely(db, token, newInfo)
+  local function updateTokenDB(db, token, newInfo)
     local currentTime = os.time()
 
     -- Prepare new token data
@@ -108,7 +105,7 @@ function DexHandlers.handleUpdateTokenInfo(msg)
   end
 
   -- Process tokens in the current batch
-  for i = 1, pendingTokens do
+  for i = 1, totalTokens do
     local token = tokens[i]
 
     -- Call the blockchain to get token info
@@ -124,7 +121,7 @@ function DexHandlers.handleUpdateTokenInfo(msg)
         Logger.warn("Failed to get token info", { id = token.id, error = response.Error })
       else
         -- Update token with received information
-        local success, err = updateTokenSafely(Components.collector.db, token, response)
+        local success, err = updateTokenDB(Components.collector.db, token, response)
 
         if success then
           updatedTokens = updatedTokens + 1
@@ -141,7 +138,7 @@ function DexHandlers.handleUpdateTokenInfo(msg)
       end
 
       -- If all tokens in this batch are processed, send response
-      if processedTokens >= pendingTokens then
+      if processedTokens >= totalTokens then
         msg.reply({
           Action = msg.Action .. "Response",
           Status = "Success",
@@ -150,7 +147,6 @@ function DexHandlers.handleUpdateTokenInfo(msg)
           Updated = tostring(updatedTokens),
           Failed = tostring(failedTokens),
           Errors = Utils.jsonEncode(errors),
-          RemainingTokens = tostring(totalTokens - processedTokens)
         })
       end
     end)
@@ -244,7 +240,7 @@ function DexHandlers.handleGetQuote(msg)
 
   -- Validate request
   if not msg.SourceToken or not msg.TargetToken or not msg.AmountIn then
-    DexHandlers.handleError(msg, "Missing required parameters: SourceToken, TargetToken, Amount", "ERR_INVALID_PARAMS")
+    DexHandlers.handleError(msg, "Missing required parameters: SourceToken, TargetToken, AmountIn", "ERR_INVALID_PARAMS")
     return
   end
 
@@ -430,12 +426,13 @@ function DexHandlers.handleCollectData(msg)
   end
 
   local source = msg.Source
-  local poolAddresses = Utils.jsonDecode(msg.PoolAddresses)
+  local poolAddresses = Pools[source]
 
   if not source or not poolAddresses or #poolAddresses == 0 then
     DexHandlers.handleError(msg, "Missing required parameters: Source, PoolAddresses", "ERR_INVALID_PARAMS")
     return
   end
+
 
   Components.collector.collectFromDex(source, poolAddresses, function(results)
     -- Save to database if requested
@@ -507,6 +504,25 @@ function DexHandlers.handleCollectData(msg)
       })
     end
   end)
+end
+
+function DexHandlers.handleFlushCollectors(msg)
+  if not Components.collector then
+    DexHandlers.handleError(msg, "Collector not initialized", "ERR_COLLECTOR_NOT_INITIALIZED")
+    return
+  end
+
+  local maxAge = msg.MaxAge           -- Optional: age threshold in seconds
+  local forced = msg.Forced == "true" -- Force flush all pending collectors
+
+  local result = Components.collector.flushPendingCollections(maxAge, forced)
+
+  msg.reply({
+    Action = msg.Action .. "Response",
+    Status = "Success",
+    FlushedCount = tostring(result.flushedCount),
+    RemainingCount = tostring(result.remainingCount)
+  })
 end
 
 -- These are the initialization handlers
