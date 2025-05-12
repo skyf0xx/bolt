@@ -240,7 +240,7 @@ function DexHandlers.handleGetQuote(msg)
 
   -- Validate request
   if not msg.SourceToken or not msg.TargetToken or not msg.AmountIn then
-    DexHandlers.handleError(msg, "Missing required parameters: SourceToken, TargetToken, Amount", "ERR_INVALID_PARAMS")
+    DexHandlers.handleError(msg, "Missing required parameters: SourceToken, TargetToken, AmountIn", "ERR_INVALID_PARAMS")
     return
   end
 
