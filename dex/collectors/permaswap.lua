@@ -8,7 +8,7 @@ local Permaswap = {}
 
 -- Fetch basic information about a Permaswap pool
 function Permaswap.fetchPoolInfo(poolAddress, collector, callback)
-  Logger.debug("Fetching pool info with tracking", { pool = poolAddress })
+  Logger.debug("Fetching pool info", { pool = poolAddress })
 
   -- Add to pending collections
   collector.pendingCollections[poolAddress] = {
