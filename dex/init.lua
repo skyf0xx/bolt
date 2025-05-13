@@ -68,7 +68,7 @@ end
 
 -- Build graph from database
 function Init.buildGraph(callback)
-  components.graph:buildGraph(PoolRepository, TokenRepository, callback)
+  Components.graph:buildGraph(PoolRepository, TokenRepository, callback)
 end
 
 -- Main initialization function
