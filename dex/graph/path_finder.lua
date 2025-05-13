@@ -4,6 +4,7 @@ Logger = Logger.createLogger("PathFinder")
 local Utils = require('dex.utils.utils')
 local BigDecimal = require('dex.utils.big_decimal')
 local Collector = require('dex.collectors.collector')
+local Dijkstra = require('dex.utils.dijkstra') -- Add this new import
 
 local PathFinder = {}
 
@@ -35,92 +36,14 @@ function PathFinder.findAllPaths(sourceTokenId, targetTokenId, maxHops)
     return {}, "Target token not found in graph"
   end
 
-  local paths = {}
-  local visited = {}
-
-  -- DFS implementation for path finding
-  local function dfs(currentTokenId, path, depth)
-    if depth > maxHops then
-      return
-    end
-
-    visited[currentTokenId] = true
-
-    -- If we reached the target token, add the path to results
-    if currentTokenId == targetTokenId then
-      table.insert(paths, Utils.deepCopy(path))
-      visited[currentTokenId] = false
-      return
-    end
-
-    -- Check all connected tokens
-    if PathFinder.graph.edges[currentTokenId] then
-      for _, edge in ipairs(PathFinder.graph.edges[currentTokenId]) do
-        local nextTokenId = edge.connected_to
-
-        -- Skip inactive pools and already visited tokens
-        if edge.status ~= "active" or visited[nextTokenId] then
-          goto continue
-        end
-
-        -- Add this step to the path
-        table.insert(path, {
-          from = currentTokenId,
-          to = nextTokenId,
-          pool_id = edge.pool_id,
-          source = edge.source,
-          fee_bps = edge.fee_bps
-        })
-
-        -- Continue DFS from this token
-        dfs(nextTokenId, path, depth + 1)
-
-        -- Remove the last step (backtrack)
-        table.remove(path)
-
-        ::continue::
-      end
-    end
-
-    visited[currentTokenId] = false
-  end
-
-  -- Start DFS from source token
-  dfs(sourceTokenId, {}, 1)
-
-  -- Deduplicate paths based on the sequence of tokens and pools
-  local uniquePaths = {}
-  local seenPathSignatures = {}
-
-  for _, path in ipairs(paths) do
-    -- Create a signature of the path (token ids + pool ids sequence)
-    local pathSignature = ""
-    for _, step in ipairs(path) do
-      pathSignature = pathSignature .. step.from .. "-" .. step.to .. "-" .. step.pool_id .. ";"
-    end
-
-    -- Only add if we haven't seen this exact sequence
-    if not seenPathSignatures[pathSignature] then
-      seenPathSignatures[pathSignature] = true
-      table.insert(uniquePaths, path)
-    end
-  end
-
-  paths = uniquePaths
-
-  -- Sort paths by length (shorter paths first)
-  table.sort(paths, function(a, b)
-    return #a < #b
-  end)
-
-  -- Limit the number of paths to return
-  if #paths > Constants.PATH.MAX_PATHS_TO_RETURN then
-    local limitedPaths = {}
-    for i = 1, Constants.PATH.MAX_PATHS_TO_RETURN do
-      table.insert(limitedPaths, paths[i])
-    end
-    paths = limitedPaths
-  end
+  -- Use Dijkstra's algorithm to find paths
+  local paths = Dijkstra.findAllPaths(
+    PathFinder.graph,
+    sourceTokenId,
+    targetTokenId,
+    maxHops,
+    Constants.PATH.MAX_PATHS_TO_RETURN
+  )
 
   Logger.info("Found paths", { count = #paths, source = sourceTokenId, target = targetTokenId })
   return paths
@@ -171,8 +94,8 @@ function PathFinder.findArbitrageOpportunities(startTokenId, inputAmount, callba
     return
   end
 
-  -- Find cycles that start and end at the same token
-  local cycles = PathFinder.graph:findCycles(startTokenId)
+  -- Find cycles that start and end at the same token using Dijkstra
+  local cycles = Dijkstra.findCycles(PathFinder.graph, startTokenId, Constants.PATH.MAX_PATH_LENGTH)
 
   if #cycles == 0 then
     callback({ opportunities = {} }, "No cycles found")

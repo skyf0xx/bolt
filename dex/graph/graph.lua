@@ -2,6 +2,7 @@ local Constants = require('dex.utils.constants')
 local Logger = require('dex.utils.logger')
 Logger = Logger.createLogger("Graph")
 local Utils = require('dex.utils.utils')
+local Dijkstra = require('dex.utils.dijkstra') -- Add this import
 
 local Graph = {}
 
@@ -169,8 +170,8 @@ function Graph:getPool(poolId)
   return self.poolsById[poolId]
 end
 
-function Graph:buildGraph(components, poolRepository, tokenRepository, callback)
-  local db = components.collector.db
+function Graph:buildGraph(poolRepository, tokenRepository, callback)
+  local db = Components.collector.db
 
   -- Get all pools with token info
   local pools = poolRepository.getPoolsWithTokenInfo(db)
@@ -312,53 +313,8 @@ function Graph:findCycles(startTokenId, maxHops)
     return {}, "Start token does not exist in the graph"
   end
 
-  local cycles = {}
-  local function dfs(currentTokenId, path, visited, depth)
-    if depth > maxHops then
-      return
-    end
-
-    visited[currentTokenId] = true
-
-    if self.edges[currentTokenId] then
-      for _, edge in ipairs(self.edges[currentTokenId]) do
-        if edge.status ~= "active" then
-          goto continue
-        end
-
-        local nextTokenId = edge.connected_to
-
-        -- If we've found a cycle back to the start token
-        if nextTokenId == startTokenId and depth > 1 then
-          local cyclePath = Utils.deepCopy(path)
-          table.insert(cyclePath, {
-            from = currentTokenId,
-            to = nextTokenId,
-            pool_id = edge.pool_id
-          })
-
-          table.insert(cycles, cyclePath)
-          goto continue
-        end
-
-        -- Continue searching if token not visited
-        if not visited[nextTokenId] then
-          local newPath = Utils.deepCopy(path)
-          table.insert(newPath, {
-            from = currentTokenId,
-            to = nextTokenId,
-            pool_id = edge.pool_id
-          })
-
-          dfs(nextTokenId, newPath, Utils.deepCopy(visited), depth + 1)
-        end
-
-        ::continue::
-      end
-    end
-  end
-
-  dfs(startTokenId, {}, {}, 1)
+  -- Use Dijkstra's implementation to find cycles
+  local cycles = Dijkstra.findCycles(self, startTokenId, maxHops)
 
   -- Limit number of cycles to analyze
   if #cycles > Constants.NUMERIC.MAX_CYCLES_TO_ANALYZE then
