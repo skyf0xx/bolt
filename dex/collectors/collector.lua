@@ -181,20 +181,15 @@ function Collector.saveToDatabase(data, callback)
     return
   end
 
-  -- Track pending reserve updates
-  local pendingReserves = Utils.tableSize(data.reserves)
 
-  if pendingReserves == 0 then
-    -- No reserves to update, commit and return
-    db:exec("COMMIT")
-    Logger.info("Data saved to database", {
-      tokens = #data.tokens,
-      pools = #data.pools,
-      reserves = 0
-    })
-    callback(true)
-    return
-  end
+  db:exec("COMMIT")
+  Logger.info("Data saved to database", {
+    tokens = #data.tokens,
+    pools = #data.pools,
+    reserves = 0
+  })
+  callback(true)
+  return
 end
 
 -- Get pools that need reserve refresh
