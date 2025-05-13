@@ -7,7 +7,7 @@ local Botega = {}
 
 -- Fetch basic information about a Botega pool
 function Botega.fetchPoolInfo(poolAddress, collector, callback)
-  Logger.debug("Fetching pool info with tracking", { pool = poolAddress })
+  Logger.debug("Fetching pool info", { pool = poolAddress })
 
   -- Add to pending collections
   collector.pendingCollections[poolAddress] = {
