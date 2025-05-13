@@ -112,7 +112,11 @@ function Dijkstra.findShortestPaths(graph, start, target, options)
       goto continue
     end
 
-    visited[current] = true
+    if current ~= nil then
+      visited[current] = true
+    else
+      goto continue
+    end
 
     -- Skip if we've reached max hops
     if pathLengths[current] >= maxHops then
