@@ -4,12 +4,14 @@ local Logger = require('dex.utils.logger')
 
 -- PriorityQueue implementation for Dijkstra's algorithm
 local PriorityQueue = {}
+PriorityQueue.__index = PriorityQueue -- Set metatable for proper method inheritance
 
 function PriorityQueue.new()
-  return {
+  local queue = {
     items = {},
     count = 0
   }
+  return setmetatable(queue, PriorityQueue) -- Set metatable to properly inherit methods
 end
 
 function PriorityQueue:push(item, priority)
