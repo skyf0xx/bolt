@@ -397,7 +397,7 @@ function DexHandlers.handleBuildGraph(msg)
     return
   end
 
-  Init.buildGraph(Components, function(success, err)
+  Init.buildGraph(function(success, err)
     if success then
       msg.reply({
         Action = msg.Action .. "Response",
@@ -458,7 +458,7 @@ function DexHandlers.handleCollectData(msg)
           Logger.info("Rebuilding graph")
 
           -- This is the key fix: use the proper function to rebuild the graph
-          Init.buildGraph(Components, function(success, err)
+          Init.buildGraph(function(success, err)
             if not success then
               msg.reply({
                 Action = msg.Action .. "Response",

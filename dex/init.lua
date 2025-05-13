@@ -67,8 +67,8 @@ function Init.setupComponents(db, existingComponents)
 end
 
 -- Build graph from database
-function Init.buildGraph(components, callback)
-  components.graph:buildGraph(components, PoolRepository, TokenRepository, callback)
+function Init.buildGraph(callback)
+  components.graph:buildGraph(PoolRepository, TokenRepository, callback)
 end
 
 -- Main initialization function
