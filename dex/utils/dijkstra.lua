@@ -4,12 +4,14 @@ local Logger = require('dex.utils.logger')
 
 -- PriorityQueue implementation for Dijkstra's algorithm
 local PriorityQueue = {}
+PriorityQueue.__index = PriorityQueue -- Set metatable for proper method inheritance
 
 function PriorityQueue.new()
-  return {
+  local queue = {
     items = {},
     count = 0
   }
+  return setmetatable(queue, PriorityQueue) -- Set metatable to properly inherit methods
 end
 
 function PriorityQueue:push(item, priority)
@@ -110,7 +112,11 @@ function Dijkstra.findShortestPaths(graph, start, target, options)
       goto continue
     end
 
-    visited[current] = true
+    if current ~= nil then
+      visited[current] = true
+    else
+      goto continue
+    end
 
     -- Skip if we've reached max hops
     if pathLengths[current] >= maxHops then

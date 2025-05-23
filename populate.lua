@@ -1,8 +1,7 @@
 local ao = require('ao')
-local json = require('json')
 
 
-local BOLT_PROTOCOL = 'cMoONh83OXPJxJXtVv4WgNw91XRAbSg0yYRNw1RsO18' --'AzsqUB479zLabNlI9LbrSukKE6nGUtIYkpu3zGc2nz8'
+local BOLT_PROTOCOL = 'AzsqUB479zLabNlI9LbrSukKE6nGUtIYkpu3zGc2nz8'
 
 
 Handlers.add('populate', Handlers.utils.hasMatchingTag('Action', 'Populate'), function(msg)
